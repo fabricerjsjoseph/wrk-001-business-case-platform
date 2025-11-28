@@ -1,0 +1,230 @@
+.ai-auditor-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.ai-auditor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-icon {
+  font-size: 20px;
+}
+
+.ai-auditor-header h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.audit-button {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.audit-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.audit-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ai-auditor-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.error-message {
+  background: #fdecea;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 24px;
+  color: #7f8c8d;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-state p {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+}
+
+.audit-features {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  display: inline-block;
+}
+
+.audit-features li {
+  font-size: 13px;
+  margin: 4px 0;
+  color: #2c3e50;
+}
+
+.risk-score-section {
+  margin-bottom: 20px;
+}
+
+.risk-score-section h3 {
+  font-size: 14px;
+  margin: 0 0 8px 0;
+  color: #2c3e50;
+}
+
+.risk-meter {
+  height: 8px;
+  background: #ecf0f1;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.risk-fill {
+  height: 100%;
+  transition: width 0.5s ease;
+  border-radius: 4px;
+}
+
+.risk-label {
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 6px;
+}
+
+.findings-section {
+  margin-bottom: 20px;
+}
+
+.findings-section h3 {
+  font-size: 14px;
+  margin: 0 0 12px 0;
+  color: #2c3e50;
+}
+
+.no-findings {
+  background: #e8f8f0;
+  color: #27ae60;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.findings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.year-group {
+  background: #f8f9fa;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.year-header {
+  background: #34495e;
+  color: white;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.finding-item {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #ecf0f1;
+}
+
+.finding-item:last-child {
+  border-bottom: none;
+}
+
+.finding-item.error {
+  background: #fef2f2;
+}
+
+.finding-item.warning {
+  background: #fffbeb;
+}
+
+.finding-item.info {
+  background: #eff6ff;
+}
+
+.finding-icons {
+  display: flex;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.finding-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.finding-field {
+  font-size: 11px;
+  font-weight: 600;
+  color: #2c3e50;
+  text-transform: uppercase;
+}
+
+.finding-message {
+  font-size: 12px;
+  color: #4a5568;
+}
+
+.suggestions-section h3 {
+  font-size: 14px;
+  margin: 0 0 8px 0;
+  color: #2c3e50;
+}
+
+.suggestions-list {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 12px;
+  color: #4a5568;
+}
+
+.suggestions-list li {
+  margin: 6px 0;
+}
