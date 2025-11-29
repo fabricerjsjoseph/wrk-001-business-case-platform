@@ -21,7 +21,14 @@ const state = {
             'Tax Rate': '25%',
             'Discount Rate': '10%',
         },
-        canvas_content: {} // Store AI-generated canvas content
+        canvas_content: {}, // Store AI-generated canvas content
+        strategy: {
+            problem_statement: '',
+            investment_type: '',
+            strategic_pillar: '',
+            stakeholders: '',
+            signoff: false
+        }
     },
     buildingBlocks: null, // Will be fetched from API
     auditResults: null,
@@ -30,8 +37,42 @@ const state = {
     isExporting: false,
     isAuditing: false,
     isGenerating: false,
-    charts: {}
+    charts: {},
+    financialMetrics: {
+        npv: 0,
+        irr: 0,
+        paybackPeriod: null,
+        rofe: 0,
+        inflationRate: 3,
+        hurdleRate: 10,
+        initialInvestment: 500000
+    },
+    interrogator: {
+        currentQuestion: null,
+        questionsAnswered: 0,
+        answers: [],
+        usedQuestions: []
+    }
 };
+
+// Hot Topic Questions for Investment Committee Preparation
+const hotTopicQuestions = [
+    { category: 'Cannibalization', question: 'How will this initiative affect sales of our existing products? What is the expected cannibalization rate?', hint: 'Consider the overlap with existing product lines and customer segments.' },
+    { category: 'Ramp-up Curves', question: 'What is your expected ramp-up timeline? How long until this reaches full operational capacity?', hint: 'Think about resource constraints, market adoption, and learning curves.' },
+    { category: 'Competitive Response', question: 'How do you expect competitors to respond to this initiative, and how will that impact your projections?', hint: 'Consider pricing pressure, feature matching, and market positioning.' },
+    { category: 'Dependency Risk', question: 'What are the critical dependencies for this project, and what is your mitigation plan if any fail?', hint: 'Think about technology, suppliers, talent, and regulatory dependencies.' },
+    { category: 'Market Validation', question: 'What customer validation have you done to confirm demand at the projected price point?', hint: 'Reference any pilots, surveys, focus groups, or pre-orders.' },
+    { category: 'Scale Economics', question: 'At what volume does this business become profitable? What happens if you achieve only 50% of projected volume?', hint: 'Consider fixed vs variable costs and break-even analysis.' },
+    { category: 'Resource Allocation', question: 'What resources will be diverted from existing initiatives, and what is the opportunity cost?', hint: 'Think about talent, capital, and management attention.' },
+    { category: 'Exit Strategy', question: 'What is the exit strategy if this initiative underperforms? What are the sunk costs vs. recoverable assets?', hint: 'Consider asset liquidation value and contractual obligations.' },
+    { category: 'Technology Risk', question: 'What technology risks exist, and how confident are you in the technical feasibility?', hint: 'Think about unproven technologies, integration complexity, and technical debt.' },
+    { category: 'Regulatory Risk', question: 'What regulatory approvals are required, and what is the timeline and risk of non-approval?', hint: 'Consider industry regulations, compliance requirements, and geopolitical factors.' },
+    { category: 'Talent Risk', question: 'Do you have the right talent to execute this? What is your plan for critical skill gaps?', hint: 'Think about hiring plans, training needs, and retention strategies.' },
+    { category: 'Customer Acquisition', question: 'What is your customer acquisition cost assumption, and how does it compare to industry benchmarks?', hint: 'Consider marketing spend, sales cycles, and conversion rates.' },
+    { category: 'Sensitivity Analysis', question: 'What happens to your IRR if costs increase by 20%? What is the margin of safety in your projections?', hint: 'Think about the key assumptions that drive the business case.' },
+    { category: 'Strategic Fit', question: 'How does this initiative align with our 5-year strategic plan? Why now?', hint: 'Consider timing, strategic priorities, and corporate capabilities.' },
+    { category: 'Execution Risk', question: 'What is your track record of executing similar initiatives? What lessons learned are you applying?', hint: 'Reference past projects, failures, and organizational capabilities.' }
+];
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
@@ -39,6 +80,9 @@ document.addEventListener('DOMContentLoaded', function() {
     renderFinancialData();
     updateProjectDisplay();
     populateBlockSelect();
+    validateStrategyForm();
+    updateFinancialMetrics();
+    runCommercialAgentCheck();
 });
 
 // ========== CANVAS BUILDING BLOCKS ==========
@@ -670,14 +714,50 @@ function resetBusinessCase() {
             'Tax Rate': '25%',
             'Discount Rate': '10%',
         },
-        canvas_content: {}
+        canvas_content: {},
+        strategy: {
+            problem_statement: '',
+            investment_type: '',
+            strategic_pillar: '',
+            stakeholders: '',
+            signoff: false
+        }
     };
     state.auditResults = null;
+    state.interrogator = {
+        currentQuestion: null,
+        questionsAnswered: 0,
+        answers: [],
+        usedQuestions: []
+    };
+    
+    // Reset strategy form
+    document.getElementById('problem-statement-input').value = '';
+    document.getElementById('investment-type-select').value = '';
+    document.getElementById('strategic-pillar-select').value = '';
+    document.getElementById('stakeholders-input').value = '';
+    document.getElementById('strategy-signoff').checked = false;
+    
+    // Reset financial settings
+    document.getElementById('inflation-rate-input').value = 3;
+    document.getElementById('hurdle-rate-input').value = 10;
+    document.getElementById('initial-investment-input').value = 500000;
+    
+    // Reset interrogator
+    document.getElementById('questions-answered').textContent = '0';
+    document.getElementById('answers-list').innerHTML = '<p class="placeholder-text">Your answered questions will appear here.</p>';
+    document.getElementById('answer-section').style.display = 'none';
+    
+    // Hide sensitivity results
+    document.getElementById('sensitivity-results').style.display = 'none';
     
     updateProjectDisplay();
     renderFinancialData();
     renderCanvas();
     renderAuditResults();
+    validateStrategyForm();
+    updateFinancialMetrics();
+    runCommercialAgentCheck();
 }
 
 // ========== AI AUDITOR ==========
@@ -826,4 +906,627 @@ function groupFindingsByYear(findings) {
         grouped[finding.year].push(finding);
     });
     return grouped;
+}
+
+// ========== MAIN TAB NAVIGATION ==========
+
+function switchMainTab(tabName) {
+    // Update tab buttons
+    document.querySelectorAll('.main-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.tab === tabName);
+    });
+    
+    // Update tab content
+    document.querySelectorAll('.main-tab-content').forEach(content => {
+        content.classList.toggle('active', content.id === `${tabName}-tab-content`);
+    });
+    
+    // Trigger metrics update when switching to financial tab
+    if (tabName === 'financial') {
+        updateFinancialMetrics();
+    }
+}
+
+// ========== COMMERCIAL AGENT (SMART LOGIC) ==========
+
+function runCommercialAgentCheck() {
+    const issues = [];
+    
+    // Check for missing strategy inputs
+    const strategy = state.businessCase.strategy;
+    if (!strategy.problem_statement || !strategy.investment_type || !strategy.strategic_pillar || !strategy.stakeholders) {
+        issues.push({ type: 'info', message: 'Complete the Strategy Validator to define your business case foundation.' });
+    }
+    
+    // Check for negative NPV
+    if (state.financialMetrics.npv < 0) {
+        issues.push({ type: 'error', message: `Negative NPV detected (${formatCurrency(state.financialMetrics.npv)}). The project may not be financially viable.` });
+    }
+    
+    // Check if IRR is below hurdle rate
+    if (state.financialMetrics.irr > 0 && state.financialMetrics.irr < state.financialMetrics.hurdleRate) {
+        issues.push({ type: 'warning', message: `IRR (${state.financialMetrics.irr.toFixed(1)}%) is below the hurdle rate (${state.financialMetrics.hurdleRate}%). Consider revising projections.` });
+    }
+    
+    // Check for logic errors (Benefits < Costs)
+    const totalRevenue = state.businessCase.financial_data.reduce((sum, fd) => sum + fd.revenue, 0);
+    const totalCosts = state.businessCase.financial_data.reduce((sum, fd) => sum + fd.costs + fd.operating_expenses, 0);
+    if (totalCosts > totalRevenue) {
+        issues.push({ type: 'error', message: 'Total costs exceed total revenue. Review your financial projections.' });
+    }
+    
+    // Check for unapproved spending (sign-off not complete)
+    if (!strategy.signoff && totalRevenue > 0) {
+        issues.push({ type: 'warning', message: 'Strategic sign-off pending. Complete the Strategy Validator before proceeding.' });
+    }
+    
+    // Check for missing financial data
+    if (state.businessCase.financial_data.length === 0) {
+        issues.push({ type: 'info', message: 'Add financial projections in the Financial Modeling tab.' });
+    }
+    
+    // Show the most important issue
+    if (issues.length > 0) {
+        // Prioritize: error > warning > info
+        const errorIssue = issues.find(i => i.type === 'error');
+        const warningIssue = issues.find(i => i.type === 'warning');
+        const infoIssue = issues.find(i => i.type === 'info');
+        
+        const issue = errorIssue || warningIssue || infoIssue;
+        showBanner(issue.type, issue.message);
+    } else {
+        // All good!
+        showBanner('success', 'Business case is complete and financially viable. Ready for submission.');
+    }
+}
+
+function showBanner(type, message) {
+    const banner = document.getElementById('commercial-agent-banner');
+    const iconSpan = banner.querySelector('.banner-icon');
+    const messageSpan = banner.querySelector('.banner-message');
+    
+    // Set banner class
+    banner.className = 'commercial-agent-banner ' + type;
+    
+    // Set icon based on type
+    const icons = {
+        'info': 'ℹ️',
+        'warning': '⚠️',
+        'error': '❌',
+        'success': '✅'
+    };
+    iconSpan.textContent = icons[type] || 'ℹ️';
+    messageSpan.textContent = message;
+    
+    banner.style.display = 'flex';
+}
+
+function closeBanner() {
+    const banner = document.getElementById('commercial-agent-banner');
+    banner.style.display = 'none';
+}
+
+// ========== STRATEGY VALIDATOR ==========
+
+function validateStrategyForm() {
+    const problemStatement = document.getElementById('problem-statement-input').value.trim();
+    const investmentType = document.getElementById('investment-type-select').value;
+    const strategicPillar = document.getElementById('strategic-pillar-select').value;
+    const stakeholders = document.getElementById('stakeholders-input').value.trim();
+    
+    let isValid = true;
+    
+    // Update state
+    state.businessCase.strategy.problem_statement = problemStatement;
+    state.businessCase.strategy.investment_type = investmentType;
+    state.businessCase.strategy.strategic_pillar = strategicPillar;
+    state.businessCase.strategy.stakeholders = stakeholders;
+    
+    // Validate problem statement
+    const problemInput = document.getElementById('problem-statement-input');
+    const problemValidation = document.getElementById('problem-statement-validation');
+    if (!problemStatement) {
+        problemInput.classList.add('error');
+        problemInput.classList.remove('valid');
+        problemValidation.textContent = 'Problem statement is required';
+        problemValidation.classList.remove('valid');
+        isValid = false;
+    } else {
+        problemInput.classList.remove('error');
+        problemInput.classList.add('valid');
+        problemValidation.textContent = '✓ Complete';
+        problemValidation.classList.add('valid');
+    }
+    
+    // Validate investment type
+    const investmentInput = document.getElementById('investment-type-select');
+    const investmentValidation = document.getElementById('investment-type-validation');
+    if (!investmentType) {
+        investmentInput.classList.add('error');
+        investmentInput.classList.remove('valid');
+        investmentValidation.textContent = 'Investment type is required';
+        investmentValidation.classList.remove('valid');
+        isValid = false;
+    } else {
+        investmentInput.classList.remove('error');
+        investmentInput.classList.add('valid');
+        investmentValidation.textContent = '✓ Complete';
+        investmentValidation.classList.add('valid');
+    }
+    
+    // Validate strategic pillar
+    const pillarInput = document.getElementById('strategic-pillar-select');
+    const pillarValidation = document.getElementById('strategic-pillar-validation');
+    if (!strategicPillar) {
+        pillarInput.classList.add('error');
+        pillarInput.classList.remove('valid');
+        pillarValidation.textContent = 'Strategic pillar is required';
+        pillarValidation.classList.remove('valid');
+        isValid = false;
+    } else {
+        pillarInput.classList.remove('error');
+        pillarInput.classList.add('valid');
+        pillarValidation.textContent = '✓ Complete';
+        pillarValidation.classList.add('valid');
+    }
+    
+    // Validate stakeholders
+    const stakeholdersInput = document.getElementById('stakeholders-input');
+    const stakeholdersValidation = document.getElementById('stakeholders-validation');
+    if (!stakeholders) {
+        stakeholdersInput.classList.add('error');
+        stakeholdersInput.classList.remove('valid');
+        stakeholdersValidation.textContent = 'Stakeholder names are required';
+        stakeholdersValidation.classList.remove('valid');
+        isValid = false;
+    } else {
+        stakeholdersInput.classList.remove('error');
+        stakeholdersInput.classList.add('valid');
+        stakeholdersValidation.textContent = '✓ Complete';
+        stakeholdersValidation.classList.add('valid');
+    }
+    
+    // Update sign-off checkbox state
+    const signOffCheckbox = document.getElementById('strategy-signoff');
+    const signoffStatus = document.getElementById('signoff-status');
+    
+    if (isValid) {
+        signOffCheckbox.disabled = false;
+        signoffStatus.className = 'signoff-status ready';
+        signoffStatus.innerHTML = '<span class="status-icon">✅</span><span class="status-text">All fields complete. You may now sign off.</span>';
+        
+        // Generate strategic narrative
+        generateStrategicNarrative();
+    } else {
+        signOffCheckbox.disabled = true;
+        signOffCheckbox.checked = false;
+        state.businessCase.strategy.signoff = false;
+        signoffStatus.className = 'signoff-status pending';
+        signoffStatus.innerHTML = '<span class="status-icon">🔒</span><span class="status-text">Complete all mandatory fields to enable sign-off</span>';
+        
+        // Clear narrative
+        const narrativeDiv = document.getElementById('strategic-narrative');
+        narrativeDiv.innerHTML = '<p class="placeholder-text">Complete all mandatory fields above to generate the strategic narrative.</p>';
+    }
+    
+    // Run commercial agent check
+    runCommercialAgentCheck();
+    
+    return isValid;
+}
+
+function generateStrategicNarrative() {
+    const strategy = state.businessCase.strategy;
+    const investmentTypeLabel = strategy.investment_type === 'growth' ? 'Growth Investment' : 'Stay in Business (SIB)';
+    const pillarLabels = {
+        'revenue-growth': 'Revenue Growth',
+        'operational-excellence': 'Operational Excellence',
+        'customer-experience': 'Customer Experience',
+        'digital-transformation': 'Digital Transformation',
+        'sustainability': 'Sustainability',
+        'innovation': 'Innovation'
+    };
+    const pillarLabel = pillarLabels[strategy.strategic_pillar] || strategy.strategic_pillar;
+    
+    const narrative = `
+<div class="narrative-content">
+<strong>Strategic Initiative:</strong> ${state.businessCase.project_name}
+
+<strong>Problem/Opportunity:</strong>
+${strategy.problem_statement}
+
+<strong>Investment Classification:</strong> ${investmentTypeLabel}
+
+<strong>Strategic Alignment:</strong> This initiative aligns with our "${pillarLabel}" strategic pillar.
+
+<strong>Key Stakeholders:</strong> ${strategy.stakeholders}
+
+<strong>Recommendation:</strong> Proceed to financial modeling to quantify the business impact and validate the investment thesis.
+</div>
+    `.trim();
+    
+    const narrativeDiv = document.getElementById('strategic-narrative');
+    narrativeDiv.innerHTML = narrative;
+}
+
+function handleSignOff() {
+    const signOffCheckbox = document.getElementById('strategy-signoff');
+    const signoffStatus = document.getElementById('signoff-status');
+    
+    state.businessCase.strategy.signoff = signOffCheckbox.checked;
+    
+    if (signOffCheckbox.checked) {
+        signoffStatus.className = 'signoff-status complete';
+        signoffStatus.innerHTML = '<span class="status-icon">🎉</span><span class="status-text">Strategic sign-off complete! You may proceed to financial modeling.</span>';
+        
+        // Show success banner
+        showBanner('success', 'Strategic sign-off complete! Navigate to Financial Modeling to continue.');
+    } else {
+        signoffStatus.className = 'signoff-status ready';
+        signoffStatus.innerHTML = '<span class="status-icon">✅</span><span class="status-text">All fields complete. You may now sign off.</span>';
+    }
+    
+    runCommercialAgentCheck();
+}
+
+// ========== FINANCIAL MODELING ENGINE ==========
+
+function updateFinancialMetrics() {
+    // Get settings from inputs
+    const inflationRate = parseFloat(document.getElementById('inflation-rate-input')?.value || 3) / 100;
+    const hurdleRate = parseFloat(document.getElementById('hurdle-rate-input')?.value || 10) / 100;
+    const initialInvestment = parseFloat(document.getElementById('initial-investment-input')?.value || 500000);
+    
+    state.financialMetrics.inflationRate = inflationRate * 100;
+    state.financialMetrics.hurdleRate = hurdleRate * 100;
+    state.financialMetrics.initialInvestment = initialInvestment;
+    
+    // Apply inflation to costs and calculate cash flows
+    const cashFlows = state.businessCase.financial_data.map((fd, index) => {
+        // Apply compounding inflation to costs
+        const inflatedCosts = fd.costs * Math.pow(1 + inflationRate, index);
+        const inflatedOpex = fd.operating_expenses * Math.pow(1 + inflationRate, index);
+        
+        // Calculate adjusted cash flow (Net Income + Depreciation - adjusted costs difference)
+        const adjustedNetIncome = fd.revenue - inflatedCosts - inflatedOpex - fd.depreciation - fd.interest;
+        const adjustedTaxes = Math.max(0, adjustedNetIncome * 0.25);
+        const cashFlow = adjustedNetIncome - adjustedTaxes + fd.depreciation;
+        
+        return cashFlow;
+    });
+    
+    // Calculate NPV
+    const npv = calculateNPV(cashFlows, hurdleRate, initialInvestment);
+    state.financialMetrics.npv = npv;
+    
+    // Calculate IRR using Newton-Raphson method
+    const irr = calculateIRR(cashFlows, initialInvestment);
+    state.financialMetrics.irr = irr * 100;
+    
+    // Calculate Payback Period
+    const paybackPeriod = calculatePaybackPeriod(cashFlows, initialInvestment);
+    state.financialMetrics.paybackPeriod = paybackPeriod;
+    
+    // Calculate ROFE (Return on Funds Employed)
+    const totalNetIncome = state.businessCase.financial_data.reduce((sum, fd) => sum + fd.net_income, 0);
+    const averageNetIncome = totalNetIncome / state.businessCase.financial_data.length;
+    const rofe = initialInvestment > 0 ? (averageNetIncome / initialInvestment) * 100 : 0;
+    state.financialMetrics.rofe = rofe;
+    
+    // Update UI
+    updateMetricsDisplay();
+    
+    // Run commercial agent check
+    runCommercialAgentCheck();
+}
+
+function calculateNPV(cashFlows, discountRate, initialInvestment) {
+    let npv = -initialInvestment;
+    
+    for (let i = 0; i < cashFlows.length; i++) {
+        npv += cashFlows[i] / Math.pow(1 + discountRate, i + 1);
+    }
+    
+    return npv;
+}
+
+function calculateIRR(cashFlows, initialInvestment, maxIterations = 100, tolerance = 0.0001) {
+    // Newton-Raphson method for IRR calculation
+    let irr = 0.1; // Initial guess of 10%
+    
+    for (let iteration = 0; iteration < maxIterations; iteration++) {
+        let npv = -initialInvestment;
+        let derivative = 0;
+        
+        for (let i = 0; i < cashFlows.length; i++) {
+            const discountFactor = Math.pow(1 + irr, i + 1);
+            npv += cashFlows[i] / discountFactor;
+            derivative -= (i + 1) * cashFlows[i] / Math.pow(1 + irr, i + 2);
+        }
+        
+        // Avoid division by zero
+        if (Math.abs(derivative) < 1e-10) {
+            break;
+        }
+        
+        const newIrr = irr - npv / derivative;
+        
+        // Check for convergence
+        if (Math.abs(newIrr - irr) < tolerance) {
+            return Math.max(0, newIrr); // Ensure non-negative IRR
+        }
+        
+        irr = newIrr;
+        
+        // Bound IRR to reasonable range
+        if (irr < -0.99) irr = -0.99;
+        if (irr > 10) irr = 10;
+    }
+    
+    return Math.max(0, irr);
+}
+
+function calculatePaybackPeriod(cashFlows, initialInvestment) {
+    let cumulativeCashFlow = -initialInvestment;
+    
+    for (let i = 0; i < cashFlows.length; i++) {
+        cumulativeCashFlow += cashFlows[i];
+        
+        if (cumulativeCashFlow >= 0) {
+            // Calculate fractional year
+            const previousCumulative = cumulativeCashFlow - cashFlows[i];
+            const fraction = Math.abs(previousCumulative) / cashFlows[i];
+            return i + fraction;
+        }
+    }
+    
+    // Not recovered within projection period
+    return null;
+}
+
+function updateMetricsDisplay() {
+    const { npv, irr, paybackPeriod, rofe, hurdleRate } = state.financialMetrics;
+    
+    // Update NPV
+    const npvCard = document.getElementById('npv-card');
+    const npvValue = document.getElementById('npv-value');
+    const npvIndicator = document.getElementById('npv-indicator');
+    const npvStatus = document.getElementById('npv-status');
+    
+    npvValue.textContent = formatCurrency(npv);
+    
+    if (npv >= 0) {
+        npvCard.className = 'metric-card positive';
+        npvIndicator.textContent = '🟢';
+        npvStatus.textContent = 'Project is financially viable';
+        npvStatus.className = 'metric-status good';
+    } else {
+        npvCard.className = 'metric-card negative';
+        npvIndicator.textContent = '🔴';
+        npvStatus.textContent = 'Project may not be viable';
+        npvStatus.className = 'metric-status bad';
+    }
+    
+    // Update IRR
+    const irrCard = document.getElementById('irr-card');
+    const irrValue = document.getElementById('irr-value');
+    const irrIndicator = document.getElementById('irr-indicator');
+    const irrStatus = document.getElementById('irr-status');
+    
+    irrValue.textContent = irr.toFixed(1) + '%';
+    
+    if (irr >= hurdleRate) {
+        irrCard.className = 'metric-card positive';
+        irrIndicator.textContent = '🟢';
+        irrStatus.textContent = `Above hurdle rate (${hurdleRate}%)`;
+        irrStatus.className = 'metric-status good';
+    } else if (irr >= hurdleRate * 0.8) {
+        irrCard.className = 'metric-card warning';
+        irrIndicator.textContent = '🟡';
+        irrStatus.textContent = `Near hurdle rate (${hurdleRate}%)`;
+        irrStatus.className = 'metric-status warning';
+    } else {
+        irrCard.className = 'metric-card negative';
+        irrIndicator.textContent = '🔴';
+        irrStatus.textContent = `Below hurdle rate (${hurdleRate}%)`;
+        irrStatus.className = 'metric-status bad';
+    }
+    
+    // Update Payback Period
+    const paybackCard = document.getElementById('payback-card');
+    const paybackValue = document.getElementById('payback-value');
+    const paybackIndicator = document.getElementById('payback-indicator');
+    const paybackStatus = document.getElementById('payback-status');
+    
+    if (paybackPeriod !== null) {
+        paybackValue.textContent = paybackPeriod.toFixed(1) + ' years';
+        
+        if (paybackPeriod <= 3) {
+            paybackCard.className = 'metric-card positive';
+            paybackIndicator.textContent = '🟢';
+            paybackStatus.textContent = 'Quick payback';
+            paybackStatus.className = 'metric-status good';
+        } else if (paybackPeriod <= 5) {
+            paybackCard.className = 'metric-card warning';
+            paybackIndicator.textContent = '🟡';
+            paybackStatus.textContent = 'Moderate payback';
+            paybackStatus.className = 'metric-status warning';
+        } else {
+            paybackCard.className = 'metric-card negative';
+            paybackIndicator.textContent = '🔴';
+            paybackStatus.textContent = 'Long payback period';
+            paybackStatus.className = 'metric-status bad';
+        }
+    } else {
+        paybackValue.textContent = '> 5 years';
+        paybackCard.className = 'metric-card negative';
+        paybackIndicator.textContent = '🔴';
+        paybackStatus.textContent = 'Not recovered in projection period';
+        paybackStatus.className = 'metric-status bad';
+    }
+    
+    // Update ROFE
+    const rofeCard = document.getElementById('rofe-card');
+    const rofeValue = document.getElementById('rofe-value');
+    const rofeIndicator = document.getElementById('rofe-indicator');
+    const rofeStatus = document.getElementById('rofe-status');
+    
+    rofeValue.textContent = rofe.toFixed(1) + '%';
+    
+    if (rofe >= 15) {
+        rofeCard.className = 'metric-card positive';
+        rofeIndicator.textContent = '🟢';
+        rofeStatus.textContent = 'Strong returns';
+        rofeStatus.className = 'metric-status good';
+    } else if (rofe >= 10) {
+        rofeCard.className = 'metric-card warning';
+        rofeIndicator.textContent = '🟡';
+        rofeStatus.textContent = 'Acceptable returns';
+        rofeStatus.className = 'metric-status warning';
+    } else {
+        rofeCard.className = 'metric-card negative';
+        rofeIndicator.textContent = '🔴';
+        rofeStatus.textContent = 'Low returns';
+        rofeStatus.className = 'metric-status bad';
+    }
+}
+
+// ========== SENSITIVITY ANALYSIS ==========
+
+function runSensitivityAnalysis() {
+    const sensitivityResults = document.getElementById('sensitivity-results');
+    
+    // Get current settings
+    const hurdleRate = state.financialMetrics.hurdleRate / 100;
+    const initialInvestment = state.financialMetrics.initialInvestment;
+    const inflationRate = state.financialMetrics.inflationRate / 100;
+    
+    // Apply 10% reduction to benefits (revenue)
+    const stressedCashFlows = state.businessCase.financial_data.map((fd, index) => {
+        const stressedRevenue = fd.revenue * 0.9; // 10% reduction
+        const inflatedCosts = fd.costs * Math.pow(1 + inflationRate, index);
+        const inflatedOpex = fd.operating_expenses * Math.pow(1 + inflationRate, index);
+        
+        const adjustedNetIncome = stressedRevenue - inflatedCosts - inflatedOpex - fd.depreciation - fd.interest;
+        const adjustedTaxes = Math.max(0, adjustedNetIncome * 0.25);
+        const cashFlow = adjustedNetIncome - adjustedTaxes + fd.depreciation;
+        
+        return cashFlow;
+    });
+    
+    // Calculate stressed metrics
+    const stressedNpv = calculateNPV(stressedCashFlows, hurdleRate, initialInvestment);
+    const stressedIrr = calculateIRR(stressedCashFlows, initialInvestment) * 100;
+    
+    // Update UI
+    document.getElementById('stressed-npv').textContent = formatCurrency(stressedNpv);
+    document.getElementById('stressed-irr').textContent = stressedIrr.toFixed(1) + '%';
+    
+    const verdictElement = document.getElementById('stress-verdict');
+    const verdictText = verdictElement.querySelector('.verdict-text');
+    
+    if (stressedNpv >= 0) {
+        verdictText.textContent = '✅ Project remains viable under stress';
+        verdictText.className = 'value verdict-text viable';
+    } else {
+        verdictText.textContent = '❌ Project NOT viable under stress';
+        verdictText.className = 'value verdict-text not-viable';
+    }
+    
+    sensitivityResults.style.display = 'block';
+}
+
+// ========== HOT TOPIC INTERROGATOR ==========
+
+function drawNewQuestion() {
+    // Get available questions
+    const availableQuestions = hotTopicQuestions.filter((_, index) => 
+        !state.interrogator.usedQuestions.includes(index)
+    );
+    
+    if (availableQuestions.length === 0) {
+        // Reset if all questions used
+        state.interrogator.usedQuestions = [];
+        drawNewQuestion();
+        return;
+    }
+    
+    // Select random question
+    const randomIndex = Math.floor(Math.random() * availableQuestions.length);
+    const originalIndex = hotTopicQuestions.indexOf(availableQuestions[randomIndex]);
+    const question = availableQuestions[randomIndex];
+    
+    state.interrogator.currentQuestion = { ...question, index: originalIndex };
+    state.interrogator.usedQuestions.push(originalIndex);
+    
+    // Update UI
+    document.getElementById('card-category').textContent = question.category;
+    document.getElementById('card-question').textContent = question.question;
+    document.getElementById('card-hint').textContent = '💡 Hint: ' + question.hint;
+    
+    // Show answer section
+    document.getElementById('answer-section').style.display = 'block';
+    document.getElementById('answer-input').value = '';
+    document.getElementById('answer-input').focus();
+    
+    // Update counter
+    document.getElementById('total-questions').textContent = hotTopicQuestions.length;
+}
+
+function submitAnswer() {
+    const answerInput = document.getElementById('answer-input');
+    const answer = answerInput.value.trim();
+    
+    if (!answer) {
+        alert('Please enter a response before submitting.');
+        return;
+    }
+    
+    if (!state.interrogator.currentQuestion) {
+        return;
+    }
+    
+    // Save answer
+    state.interrogator.answers.push({
+        category: state.interrogator.currentQuestion.category,
+        question: state.interrogator.currentQuestion.question,
+        answer: answer
+    });
+    
+    state.interrogator.questionsAnswered++;
+    
+    // Update counter
+    document.getElementById('questions-answered').textContent = state.interrogator.questionsAnswered;
+    
+    // Add to answers list
+    renderAnswersList();
+    
+    // Hide answer section
+    document.getElementById('answer-section').style.display = 'none';
+    state.interrogator.currentQuestion = null;
+    
+    // Show success message
+    showBanner('success', 'Response recorded! Draw another question to continue preparing.');
+}
+
+function skipQuestion() {
+    document.getElementById('answer-section').style.display = 'none';
+    state.interrogator.currentQuestion = null;
+}
+
+function renderAnswersList() {
+    const answersList = document.getElementById('answers-list');
+    
+    if (state.interrogator.answers.length === 0) {
+        answersList.innerHTML = '<p class="placeholder-text">Your answered questions will appear here.</p>';
+        return;
+    }
+    
+    answersList.innerHTML = state.interrogator.answers.map((item, index) => `
+        <div class="answer-item">
+            <div class="answer-item-category">${item.category}</div>
+            <div class="answer-item-question">${item.question}</div>
+            <div class="answer-item-response">${item.answer}</div>
+        </div>
+    `).join('');
 }
