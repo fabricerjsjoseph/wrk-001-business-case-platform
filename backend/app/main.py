@@ -4,7 +4,7 @@ Business Case Command Center - Flask Backend
 import os
 from flask import Flask, render_template, jsonify
 
-from app.routers import data, export, ai_auditor
+from app.routers import data, export, ai_auditor, canvas_ai
 
 
 def create_app():
@@ -19,6 +19,7 @@ def create_app():
     app.register_blueprint(data.bp, url_prefix='/api/data')
     app.register_blueprint(export.bp, url_prefix='/api/export')
     app.register_blueprint(ai_auditor.bp, url_prefix='/api/ai')
+    app.register_blueprint(canvas_ai.bp, url_prefix='/api/canvas')
     
     @app.route('/')
     def index():
