@@ -1,55 +1,61 @@
 """
 AI Auditor router - Vertex AI integration for logic error detection
 """
-from fastapi import APIRouter, HTTPException
-from app.models.schemas import AIAuditRequest, AIAuditResponse, BusinessCaseData
-import os
+from flask import Blueprint, jsonify, request, abort
 
-router = APIRouter()
+bp = Blueprint('ai_auditor', __name__)
 
 
-def analyze_financial_logic(data: BusinessCaseData) -> list[dict]:
+def analyze_financial_logic(data):
     """Analyze financial data for logical errors"""
     findings = []
+    financial_data = data.get('financial_data', [])
     
-    for idx, fd in enumerate(data.financial_data):
-        year = fd.year
+    for idx, fd in enumerate(financial_data):
+        year = fd.get('year', 0)
+        revenue = fd.get('revenue', 0)
+        costs = fd.get('costs', 0)
+        gross_profit = fd.get('gross_profit', 0)
+        operating_expenses = fd.get('operating_expenses', 0)
+        ebitda = fd.get('ebitda', 0)
+        depreciation = fd.get('depreciation', 0)
+        ebit = fd.get('ebit', 0)
         
         # Check gross profit calculation
-        expected_gross_profit = fd.revenue - fd.costs
-        if abs(fd.gross_profit - expected_gross_profit) > 0.01:
+        expected_gross_profit = revenue - costs
+        if abs(gross_profit - expected_gross_profit) > 0.01:
             findings.append({
                 "type": "error",
                 "year": year,
                 "field": "gross_profit",
-                "message": f"Gross Profit mismatch. Expected: {expected_gross_profit:.2f}, Found: {fd.gross_profit:.2f}",
+                "message": f"Gross Profit mismatch. Expected: {expected_gross_profit:.2f}, Found: {gross_profit:.2f}",
                 "severity": "high"
             })
         
         # Check EBITDA calculation
-        expected_ebitda = fd.gross_profit - fd.operating_expenses
-        if abs(fd.ebitda - expected_ebitda) > 0.01:
+        expected_ebitda = gross_profit - operating_expenses
+        if abs(ebitda - expected_ebitda) > 0.01:
             findings.append({
                 "type": "error",
                 "year": year,
                 "field": "ebitda",
-                "message": f"EBITDA mismatch. Expected: {expected_ebitda:.2f}, Found: {fd.ebitda:.2f}",
+                "message": f"EBITDA mismatch. Expected: {expected_ebitda:.2f}, Found: {ebitda:.2f}",
                 "severity": "high"
             })
         
         # Check EBIT calculation
-        expected_ebit = fd.ebitda - fd.depreciation
-        if abs(fd.ebit - expected_ebit) > 0.01:
+        expected_ebit = ebitda - depreciation
+        if abs(ebit - expected_ebit) > 0.01:
             findings.append({
                 "type": "error",
                 "year": year,
                 "field": "ebit",
-                "message": f"EBIT mismatch. Expected: {expected_ebit:.2f}, Found: {fd.ebit:.2f}",
+                "message": f"EBIT mismatch. Expected: {expected_ebit:.2f}, Found: {ebit:.2f}",
                 "severity": "high"
             })
         
         # Check for negative values where they shouldn't be
-        if fd.revenue < 0:
+        if revenue < 0:
             findings.append({
                 "type": "warning",
                 "year": year,
@@ -60,9 +66,10 @@ def analyze_financial_logic(data: BusinessCaseData) -> list[dict]:
         
         # Check for unrealistic growth rates
         if idx > 0:
-            prev_fd = data.financial_data[idx - 1]
-            if prev_fd.revenue > 0:
-                growth_rate = (fd.revenue - prev_fd.revenue) / prev_fd.revenue
+            prev_fd = financial_data[idx - 1]
+            prev_revenue = prev_fd.get('revenue', 0)
+            if prev_revenue > 0:
+                growth_rate = (revenue - prev_revenue) / prev_revenue
                 if growth_rate > 1.0:  # More than 100% growth
                     findings.append({
                         "type": "warning",
@@ -81,8 +88,8 @@ def analyze_financial_logic(data: BusinessCaseData) -> list[dict]:
                     })
         
         # Check margin consistency
-        if fd.revenue > 0:
-            gross_margin = fd.gross_profit / fd.revenue
+        if revenue > 0:
+            gross_margin = gross_profit / revenue
             if gross_margin < 0:
                 findings.append({
                     "type": "warning",
@@ -103,7 +110,7 @@ def analyze_financial_logic(data: BusinessCaseData) -> list[dict]:
     return findings
 
 
-def generate_suggestions(findings: list[dict], data: BusinessCaseData) -> list[str]:
+def generate_suggestions(findings, data):
     """Generate improvement suggestions based on findings"""
     suggestions = []
     
@@ -119,16 +126,16 @@ def generate_suggestions(findings: list[dict], data: BusinessCaseData) -> list[s
     if any(f["field"] == "revenue" and "growth" in f.get("message", "") for f in findings):
         suggestions.append("Consider adding sensitivity analysis for revenue projections")
     
-    if not data.assumptions:
+    if not data.get('assumptions'):
         suggestions.append("Document key assumptions underlying the financial projections")
     
-    if len(data.financial_data) < 3:
+    if len(data.get('financial_data', [])) < 3:
         suggestions.append("Consider extending projections to at least 3-5 years")
     
     return suggestions
 
 
-def calculate_risk_score(findings: list[dict]) -> float:
+def calculate_risk_score(findings):
     """Calculate overall risk score based on findings"""
     if not findings:
         return 0.0
@@ -140,32 +147,36 @@ def calculate_risk_score(findings: list[dict]) -> float:
     return min(1.0, total_weight / max(max_possible, 1))
 
 
-@router.post("/audit", response_model=AIAuditResponse)
-async def audit_business_case(request: AIAuditRequest):
+@bp.route('/audit', methods=['POST'])
+def audit_business_case():
     """
     Perform AI audit on business case data.
     This performs rule-based validation and optionally uses Vertex AI for advanced analysis.
     """
     try:
+        data = request.get_json()
+        business_case_data = data.get('business_case_data', {})
+        
         # Perform rule-based analysis
-        findings = analyze_financial_logic(request.business_case_data)
-        suggestions = generate_suggestions(findings, request.business_case_data)
+        findings = analyze_financial_logic(business_case_data)
+        suggestions = generate_suggestions(findings, business_case_data)
         risk_score = calculate_risk_score(findings)
         
-        return AIAuditResponse(
-            status="completed",
-            findings=findings,
-            suggestions=suggestions,
-            risk_score=risk_score
-        )
+        return jsonify({
+            "status": "completed",
+            "findings": findings,
+            "suggestions": suggestions,
+            "risk_score": risk_score
+        })
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        abort(500, description=str(e))
 
 
-@router.post("/validate-formula")
-async def validate_formula(formula: dict):
+@bp.route('/validate-formula', methods=['POST'])
+def validate_formula():
     """Validate a specific formula or calculation"""
     try:
+        formula = request.get_json()
         left_side = formula.get("left_side", 0)
         right_side = formula.get("right_side", 0)
         operator = formula.get("operator", "=")
@@ -184,20 +195,20 @@ async def validate_formula(formula: dict):
         else:
             is_valid = False
         
-        return {
+        return jsonify({
             "is_valid": is_valid,
             "left_side": left_side,
             "right_side": right_side,
             "difference": abs(left_side - right_side)
-        }
+        })
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        abort(400, description=str(e))
 
 
-@router.get("/rules")
-async def get_validation_rules():
+@bp.route('/rules', methods=['GET'])
+def get_validation_rules():
     """Get list of validation rules applied during audit"""
-    return {
+    return jsonify({
         "rules": [
             {
                 "id": "gross_profit_check",
@@ -230,4 +241,4 @@ async def get_validation_rules():
                 "severity": "low"
             }
         ]
-    }
+    })
