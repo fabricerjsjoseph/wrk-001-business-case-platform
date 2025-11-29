@@ -1,15 +1,11 @@
 """
-Canvas AI Service - LlamaIndex ReAct Agent for AI-powered canvas generation
+Canvas AI Service - AI-powered canvas generation using Vertex AI
 Uses Vertex AI for LLM, Vertex AI Search for knowledge base, and Google Cloud ADC auth
 """
 import os
 from typing import Optional
 
 from llama_index.core import Settings
-from llama_index.core.agent import ReActAgent
-from llama_index.core.tools import QueryEngineTool, ToolMetadata
-from llama_index.core.query_engine import RouterQueryEngine
-from llama_index.core.selectors import PydanticSingleSelector
 from llama_index.core.llms import ChatMessage, MessageRole
 from llama_index.llms.vertex import Vertex
 
@@ -337,7 +333,7 @@ Format each section clearly with bullet points.
 
 class CanvasAIService:
     """
-    Service class for AI-powered canvas operations using LlamaIndex ReAct Agent.
+    Service class for AI-powered canvas operations using Vertex AI LLM.
     """
     
     def __init__(

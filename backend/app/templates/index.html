@@ -213,12 +213,12 @@
             <div class="modal-body">
                 <textarea id="modal-content-editor" class="content-editor"></textarea>
                 <div class="modal-ai-actions">
-                    <button class="btn btn-ai" onclick="regenerateBlockContent()">
+                    <button class="btn btn-ai" onclick="regenerateBlockContent(event)">
                         ✨ Regenerate with AI
                     </button>
                     <div class="feedback-section">
                         <input type="text" id="modal-feedback-input" placeholder="Provide feedback for AI improvement..." class="feedback-input">
-                        <button class="btn btn-secondary" onclick="applyFeedback()">Apply Feedback</button>
+                        <button class="btn btn-secondary" onclick="applyFeedback(event)">Apply Feedback</button>
                     </div>
                 </div>
             </div>

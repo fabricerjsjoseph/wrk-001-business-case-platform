@@ -351,10 +351,10 @@ function saveBlockContent() {
     renderCanvas();
 }
 
-async function regenerateBlockContent() {
+async function regenerateBlockContent(event) {
     if (!state.currentEditBlock) return;
     
-    const btn = event.target;
+    const btn = event ? event.target : document.querySelector('.modal-ai-actions .btn-ai');
     btn.disabled = true;
     btn.textContent = '⏳ Generating...';
     
@@ -388,7 +388,7 @@ async function regenerateBlockContent() {
     }
 }
 
-async function applyFeedback() {
+async function applyFeedback(event) {
     if (!state.currentEditBlock) return;
     
     const feedback = document.getElementById('modal-feedback-input').value;
@@ -398,7 +398,7 @@ async function applyFeedback() {
     }
     
     const currentContent = document.getElementById('modal-content-editor').value;
-    const btn = event.target;
+    const btn = event ? event.target : document.querySelector('.feedback-section .btn-secondary');
     btn.disabled = true;
     btn.textContent = 'Applying...';
     
