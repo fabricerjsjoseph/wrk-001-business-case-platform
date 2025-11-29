@@ -1,0 +1,54 @@
+.mission-control {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: #f0f2f5;
+}
+
+.mission-control-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  padding: 16px;
+  gap: 16px;
+}
+
+.center-panel {
+  flex: 1;
+  min-width: 0;
+}
+
+.right-panel {
+  width: 350px;
+  flex-shrink: 0;
+}
+
+.bottom-panel {
+  height: 280px;
+  padding: 0 16px 16px 16px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .right-panel {
+    width: 300px;
+  }
+}
+
+@media (max-width: 900px) {
+  .mission-control-body {
+    flex-direction: column;
+  }
+  
+  .right-panel {
+    width: 100%;
+    height: 300px;
+  }
+  
+  .bottom-panel {
+    height: auto;
+    min-height: 250px;
+  }
+}
