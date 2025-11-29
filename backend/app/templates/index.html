@@ -5,15 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Business Case Command Center</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <!-- Chart.js CDN with fallback -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Chart.js CDN with SRI and fallback -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" 
+            integrity="sha384-Vs+aRAYvgKxLvdKXDDP3tYNS1zyQoVAEyDe7Fj5QHnDR8Qi1FZoJC6NnBlzLwP3w" 
+            crossorigin="anonymous"></script>
     <script>
         // Fallback if Chart.js fails to load
         if (typeof Chart === 'undefined') {
             console.warn('Chart.js not loaded. Charts will not be displayed.');
-            window.Chart = function() { 
-                this.destroy = function() {}; 
-            };
+            window.Chart = null;
         }
     </script>
 </head>

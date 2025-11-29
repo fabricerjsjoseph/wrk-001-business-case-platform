@@ -1,6 +1,7 @@
 """
 Business Case Command Center - Flask Backend
 """
+import os
 from flask import Flask, render_template, jsonify
 
 from app.routers import data, export, ai_auditor
@@ -11,7 +12,8 @@ def create_app():
                 template_folder='templates',
                 static_folder='static')
     
-    app.config['SECRET_KEY'] = 'business-case-command-center-secret-key'
+    # Use environment variable for secret key in production
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
     
     # Register blueprints
     app.register_blueprint(data.bp, url_prefix='/api/data')
@@ -32,4 +34,7 @@ def create_app():
 app = create_app()
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=8000)
+    # Debug mode should only be enabled in development
+    # In production, use a WSGI server like gunicorn
+    debug_mode = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+    app.run(debug=debug_mode, host='0.0.0.0', port=8000)

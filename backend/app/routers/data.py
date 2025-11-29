@@ -13,7 +13,11 @@ business_cases: dict = {}
 def create_business_case():
     """Create or update a business case"""
     data = request.get_json()
+    if not data:
+        abort(400, description="Request body is required")
     project_name = data.get('project_name')
+    if not project_name:
+        abort(400, description="project_name is required")
     business_cases[project_name] = data
     return jsonify({"status": "success", "project_name": project_name})
 
@@ -38,6 +42,16 @@ def update_financial_data(project_name):
     if project_name not in business_cases:
         abort(404, description="Business case not found")
     financial_data = request.get_json()
+    if not financial_data or not isinstance(financial_data, list):
+        abort(400, description="financial_data must be a list")
+    # Validate each row has required fields
+    required_fields = ['year', 'revenue', 'costs', 'operating_expenses', 'depreciation', 'interest']
+    for row in financial_data:
+        if not isinstance(row, dict):
+            abort(400, description="Each financial_data entry must be an object")
+        for field in required_fields:
+            if field not in row:
+                abort(400, description=f"Missing required field: {field}")
     business_cases[project_name]['financial_data'] = financial_data
     return jsonify({"status": "success", "updated_rows": len(financial_data)})
 

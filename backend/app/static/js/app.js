@@ -283,8 +283,14 @@ function renderSlides() {
     const slides = generateSlides();
     const slideGrid = document.getElementById('slide-grid');
     
-    // Destroy existing charts
-    Object.values(state.charts).forEach(chart => chart.destroy());
+    // Destroy existing charts (only if Chart.js is available)
+    if (window.Chart) {
+        Object.values(state.charts).forEach(chart => {
+            if (chart && typeof chart.destroy === 'function') {
+                chart.destroy();
+            }
+        });
+    }
     state.charts = {};
     
     slideGrid.innerHTML = '';
@@ -346,8 +352,8 @@ function renderChart(slide) {
     const canvas = document.getElementById(`chart-${slide.id}`);
     if (!canvas) return;
     
-    // Check if Chart.js is properly loaded
-    if (typeof Chart === 'undefined' || !Chart.register) {
+    // Check if Chart.js is properly loaded (consistent with fallback in HTML)
+    if (!window.Chart) {
         console.warn('Chart.js not available, skipping chart render');
         return;
     }
@@ -430,11 +436,18 @@ async function saveBusinessCase() {
             body: JSON.stringify(state.businessCase)
         });
         
-        if (response.ok) {
-            showSaveStatus('Saved!');
-        } else {
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Save failed:', errorText);
             showSaveStatus('Save failed');
+            return;
         }
+        
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            await response.json(); // Consume the response
+        }
+        showSaveStatus('Saved!');
     } catch (err) {
         console.error('Save error:', err);
         showSaveStatus('Save failed');
