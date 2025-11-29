@@ -1,49 +1,51 @@
 """
 Data management router
 """
-from fastapi import APIRouter, HTTPException
-from app.models.schemas import BusinessCaseData, FinancialData
+from flask import Blueprint, jsonify, request, abort
 
-router = APIRouter()
+bp = Blueprint('data', __name__)
 
 # In-memory storage for demo purposes
-business_cases: dict[str, BusinessCaseData] = {}
+business_cases: dict = {}
 
 
-@router.post("/business-case")
-async def create_business_case(data: BusinessCaseData):
+@bp.route('/business-case', methods=['POST'])
+def create_business_case():
     """Create or update a business case"""
-    business_cases[data.project_name] = data
-    return {"status": "success", "project_name": data.project_name}
+    data = request.get_json()
+    project_name = data.get('project_name')
+    business_cases[project_name] = data
+    return jsonify({"status": "success", "project_name": project_name})
 
 
-@router.get("/business-case/{project_name}")
-async def get_business_case(project_name: str):
+@bp.route('/business-case/<project_name>', methods=['GET'])
+def get_business_case(project_name):
     """Get a business case by project name"""
     if project_name not in business_cases:
-        raise HTTPException(status_code=404, detail="Business case not found")
-    return business_cases[project_name]
+        abort(404, description="Business case not found")
+    return jsonify(business_cases[project_name])
 
 
-@router.get("/business-cases")
-async def list_business_cases():
+@bp.route('/business-cases', methods=['GET'])
+def list_business_cases():
     """List all business cases"""
-    return list(business_cases.keys())
+    return jsonify(list(business_cases.keys()))
 
 
-@router.put("/business-case/{project_name}/financial-data")
-async def update_financial_data(project_name: str, financial_data: list[FinancialData]):
+@bp.route('/business-case/<project_name>/financial-data', methods=['PUT'])
+def update_financial_data(project_name):
     """Update financial data for a business case"""
     if project_name not in business_cases:
-        raise HTTPException(status_code=404, detail="Business case not found")
-    business_cases[project_name].financial_data = financial_data
-    return {"status": "success", "updated_rows": len(financial_data)}
+        abort(404, description="Business case not found")
+    financial_data = request.get_json()
+    business_cases[project_name]['financial_data'] = financial_data
+    return jsonify({"status": "success", "updated_rows": len(financial_data)})
 
 
-@router.delete("/business-case/{project_name}")
-async def delete_business_case(project_name: str):
+@bp.route('/business-case/<project_name>', methods=['DELETE'])
+def delete_business_case(project_name):
     """Delete a business case"""
     if project_name not in business_cases:
-        raise HTTPException(status_code=404, detail="Business case not found")
+        abort(404, description="Business case not found")
     del business_cases[project_name]
-    return {"status": "success", "deleted": project_name}
+    return jsonify({"status": "success", "deleted": project_name})

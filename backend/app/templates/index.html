@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business Case Command Center</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <!-- Chart.js CDN with fallback -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+        // Fallback if Chart.js fails to load
+        if (typeof Chart === 'undefined') {
+            console.warn('Chart.js not loaded. Charts will not be displayed.');
+            window.Chart = function() { 
+                this.destroy = function() {}; 
+            };
+        }
+    </script>
+</head>
+<body>
+    <div id="root">
+        <div class="mission-control">
+            <!-- Header -->
+            <header class="app-header">
+                <div class="header-left">
+                    <div class="logo">
+                        <span class="logo-icon">📊</span>
+                        <span class="logo-text">Business Case Command Center</span>
+                    </div>
+                </div>
+
+                <div class="header-center">
+                    <div class="project-info" id="project-info-display" onclick="toggleEditMode(true)">
+                        <h1 class="project-name" id="project-name-display">New Business Initiative</h1>
+                        <p class="project-description" id="project-description-display">Business Case Analysis for Strategic Growth</p>
+                    </div>
+                    <div class="edit-project" id="project-edit-form" style="display: none;">
+                        <input type="text" id="project-name-input" class="project-name-input" placeholder="Project Name">
+                        <input type="text" id="project-desc-input" class="project-desc-input" placeholder="Description">
+                        <button class="btn-small" onclick="submitProjectEdit()">✓</button>
+                        <button class="btn-small btn-cancel" onclick="toggleEditMode(false)">✕</button>
+                    </div>
+                </div>
+
+                <div class="header-right">
+                    <span class="save-status" id="save-status" style="display: none;"></span>
+                    <button class="btn btn-secondary" onclick="saveBusinessCase()">
+                        💾 Save
+                    </button>
+                    <button class="btn btn-primary" id="export-btn" onclick="exportToPptx()">
+                        📤 Export PPTX
+                    </button>
+                    <button class="btn btn-danger" onclick="resetBusinessCase()">
+                        🔄 Reset
+                    </button>
+                </div>
+            </header>
+
+            <!-- Main Body -->
+            <div class="mission-control-body">
+                <!-- Center Panel - Slide Grid -->
+                <div class="center-panel">
+                    <div class="slide-grid-container">
+                        <div class="slide-grid-header">
+                            <h2>Live Slides Preview</h2>
+                            <span class="slide-count" id="slide-count">12 slides</span>
+                        </div>
+                        <div class="slide-grid" id="slide-grid">
+                            <!-- Slides will be rendered here dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Panel - AI Auditor -->
+                <div class="right-panel">
+                    <div class="ai-auditor-container">
+                        <div class="ai-auditor-header">
+                            <div class="header-title">
+                                <span class="ai-icon">🤖</span>
+                                <h2>AI Auditor</h2>
+                            </div>
+                            <button class="audit-button" id="audit-btn" onclick="runAudit()">
+                                Run Audit
+                            </button>
+                        </div>
+
+                        <div class="ai-auditor-content" id="auditor-content">
+                            <div class="empty-state" id="empty-state">
+                                <div class="empty-icon">📊</div>
+                                <p>Click "Run Audit" to analyze your business case for logical errors and inconsistencies.</p>
+                                <ul class="audit-features">
+                                    <li>✓ Formula validation</li>
+                                    <li>✓ Growth rate analysis</li>
+                                    <li>✓ Margin consistency checks</li>
+                                    <li>✓ Trend anomaly detection</li>
+                                </ul>
+                            </div>
+                            <div id="audit-results" style="display: none;">
+                                <!-- Audit results will be rendered here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Panel - Data Deck -->
+            <div class="bottom-panel">
+                <div class="data-deck-container">
+                    <div class="data-deck-header">
+                        <h2>Data Deck</h2>
+                        <div class="data-deck-info">
+                            <span class="info-badge calculated">Calculated fields are highlighted</span>
+                        </div>
+                    </div>
+                    <div class="data-deck-table">
+                        <table id="financial-table">
+                            <thead>
+                                <tr>
+                                    <th>Year</th>
+                                    <th>Revenue</th>
+                                    <th>Costs</th>
+                                    <th class="calculated-header">Gross Profit</th>
+                                    <th>Op. Expenses</th>
+                                    <th class="calculated-header">EBITDA</th>
+                                    <th>Depreciation</th>
+                                    <th class="calculated-header">EBIT</th>
+                                    <th>Interest</th>
+                                    <th class="calculated-header">Taxes</th>
+                                    <th class="calculated-header">Net Income</th>
+                                </tr>
+                            </thead>
+                            <tbody id="financial-data-body">
+                                <!-- Financial data rows will be rendered here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="data-deck-footer">
+                        <div class="formula-legend">
+                            <span><strong>Formulas:</strong></span>
+                            <span>Gross Profit = Revenue - Costs</span>
+                            <span>EBITDA = Gross Profit - Op. Expenses</span>
+                            <span>EBIT = EBITDA - Depreciation</span>
+                            <span>Net Income = EBIT - Interest - Taxes (25%)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

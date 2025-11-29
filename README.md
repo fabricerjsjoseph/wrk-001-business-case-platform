@@ -1,60 +1,45 @@
 # Business Case Command Center
 
-A React/FastAPI application for creating and managing business cases with real-time data visualization and AI-powered auditing.
+A Flask application for creating and managing business cases with real-time data visualization and AI-powered auditing.
 
 ## Features
 
 - **Mission Control UI**: Single-screen layout with live slide previews
 - **12 Live Slides**: Real-time preview of PowerPoint slides mirroring a .pptx template
-- **Data Deck**: Handsontable-powered financial data input with formula enforcement
-- **AI Auditor**: Vertex AI-ready logic error detection and validation
+- **Data Deck**: Interactive financial data input with formula enforcement
+- **AI Auditor**: Logic error detection and validation
 - **Synthesizer Pattern**: Spreadsheet changes instantly update slide charts
 - **PPTX Export**: Pixel-perfect PowerPoint export
 
 ## Architecture
 
 ```
-├── frontend/          # React + TypeScript + Vite
-│   ├── src/
-│   │   ├── components/  # UI components
-│   │   ├── store/       # Zustand state management
-│   │   ├── services/    # API client
-│   │   └── types/       # TypeScript types
-│   └── ...
-└── backend/           # FastAPI + Python
+└── backend/           # Flask + Python
     └── app/
-        ├── routers/     # API endpoints
-        ├── services/    # Business logic
-        └── models/      # Pydantic schemas
+        ├── routers/     # API endpoints (Blueprints)
+        ├── templates/   # Jinja2 HTML templates
+        ├── static/      # CSS and JavaScript
+        │   ├── css/     # Stylesheet files
+        │   └── js/      # JavaScript files
+        └── models/      # Data schemas
 ```
 
 ## Prerequisites
 
-- Node.js 18+
 - Python 3.10+
 - pip
 
 ## Getting Started
 
-### Backend Setup
+### Setup
 
 ```bash
 cd backend
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+python -m app.main
 ```
 
-The API will be available at http://localhost:8000
-
-### Frontend Setup
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-The app will be available at http://localhost:5173
+The app will be available at http://localhost:8000
 
 ## API Endpoints
 
@@ -79,38 +64,12 @@ The Data Deck enforces the following formulas:
 - **EBIT** = EBITDA - Depreciation
 - **Net Income** = EBIT - Interest - Taxes (25%)
 
-## Development
-
-### Frontend
-```bash
-cd frontend
-npm run dev      # Start dev server
-npm run build    # Production build
-npm run lint     # Run ESLint
-```
-
-### Backend
-```bash
-cd backend
-uvicorn app.main:app --reload  # Start dev server
-```
-
 ## Tech Stack
 
-### Frontend
-- React 19
-- TypeScript
-- Vite
-- Zustand (state management)
-- Handsontable (data grid)
-- Chart.js + react-chartjs-2 (charts)
-- Axios (HTTP client)
-
-### Backend
-- FastAPI
-- Python 3.10+
+- Flask (Python web framework)
+- Jinja2 (templating)
+- Chart.js (charts)
 - python-pptx (PowerPoint generation)
-- Pydantic (data validation)
 - Google Cloud AI Platform (Vertex AI ready)
 
 ## License

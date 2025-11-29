@@ -1,22 +1,18 @@
 """
 PowerPoint export router
 """
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
+from flask import Blueprint, jsonify, request, send_file, abort
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.chart.data import CategoryChartData
 from pptx.enum.chart import XL_CHART_TYPE
-from pptx.dml.color import RGBColor
 import tempfile
 import os
 
-from app.models.schemas import BusinessCaseData
-
-router = APIRouter()
+bp = Blueprint('export', __name__)
 
 
-def create_title_slide(prs: Presentation, title: str, subtitle: str = ""):
+def create_title_slide(prs, title, subtitle=""):
     """Create a title slide"""
     slide_layout = prs.slide_layouts[0]
     slide = prs.slides.add_slide(slide_layout)
@@ -27,7 +23,7 @@ def create_title_slide(prs: Presentation, title: str, subtitle: str = ""):
     return slide
 
 
-def create_content_slide(prs: Presentation, title: str, content: str):
+def create_content_slide(prs, title, content):
     """Create a content slide with bullet points"""
     slide_layout = prs.slide_layouts[1]
     slide = prs.slides.add_slide(slide_layout)
@@ -39,7 +35,7 @@ def create_content_slide(prs: Presentation, title: str, content: str):
     return slide
 
 
-def create_chart_slide(prs: Presentation, title: str, chart_data: dict, chart_type: str = "bar"):
+def create_chart_slide(prs, title, chart_data, chart_type="bar"):
     """Create a slide with a chart"""
     slide_layout = prs.slide_layouts[5]  # Blank layout
     slide = prs.slides.add_slide(slide_layout)
@@ -74,32 +70,37 @@ def create_chart_slide(prs: Presentation, title: str, chart_data: dict, chart_ty
     return slide
 
 
-def generate_business_case_pptx(data: BusinessCaseData) -> str:
+def generate_business_case_pptx(data):
     """Generate a complete business case presentation"""
     prs = Presentation()
     prs.slide_width = Inches(10)
     prs.slide_height = Inches(7.5)
     
+    project_name = data.get('project_name', 'Business Case')
+    description = data.get('description', 'Business Case Analysis')
+    financial_data = data.get('financial_data', [])
+    assumptions = data.get('assumptions', {})
+    
     # Slide 1: Title
-    create_title_slide(prs, data.project_name, data.description or "Business Case Analysis")
+    create_title_slide(prs, project_name, description)
     
     # Slide 2: Executive Summary
     create_content_slide(prs, "Executive Summary", 
                         "• Project overview and objectives\n• Key financial highlights\n• Strategic alignment")
     
     # Slide 3: Revenue Projection
-    if data.financial_data:
-        years = [str(fd.year) for fd in data.financial_data]
-        revenues = [fd.revenue for fd in data.financial_data]
+    if financial_data:
+        years = [str(fd.get('year', '')) for fd in financial_data]
+        revenues = [fd.get('revenue', 0) for fd in financial_data]
         create_chart_slide(prs, "Revenue Projection", {
             "categories": years,
             "series": [{"name": "Revenue", "values": revenues}]
         }, "column")
     
     # Slide 4: Cost Analysis
-    if data.financial_data:
-        costs = [fd.costs for fd in data.financial_data]
-        op_expenses = [fd.operating_expenses for fd in data.financial_data]
+    if financial_data:
+        costs = [fd.get('costs', 0) for fd in financial_data]
+        op_expenses = [fd.get('operating_expenses', 0) for fd in financial_data]
         create_chart_slide(prs, "Cost Analysis", {
             "categories": years,
             "series": [
@@ -109,9 +110,9 @@ def generate_business_case_pptx(data: BusinessCaseData) -> str:
         }, "column")
     
     # Slide 5: Profitability
-    if data.financial_data:
-        gross_profits = [fd.gross_profit for fd in data.financial_data]
-        ebitda = [fd.ebitda for fd in data.financial_data]
+    if financial_data:
+        gross_profits = [fd.get('gross_profit', 0) for fd in financial_data]
+        ebitda = [fd.get('ebitda', 0) for fd in financial_data]
         create_chart_slide(prs, "Profitability Analysis", {
             "categories": years,
             "series": [
@@ -121,15 +122,15 @@ def generate_business_case_pptx(data: BusinessCaseData) -> str:
         }, "line")
     
     # Slide 6: Net Income
-    if data.financial_data:
-        net_income = [fd.net_income for fd in data.financial_data]
+    if financial_data:
+        net_income = [fd.get('net_income', 0) for fd in financial_data]
         create_chart_slide(prs, "Net Income Projection", {
             "categories": years,
             "series": [{"name": "Net Income", "values": net_income}]
         }, "column")
     
     # Slide 7: Key Assumptions
-    assumptions_text = "\n".join([f"• {k}: {v}" for k, v in data.assumptions.items()])
+    assumptions_text = "\n".join([f"• {k}: {v}" for k, v in assumptions.items()])
     if not assumptions_text:
         assumptions_text = "• Market growth rate assumptions\n• Cost escalation factors\n• Pricing strategy"
     create_content_slide(prs, "Key Assumptions", assumptions_text)
@@ -147,9 +148,9 @@ def generate_business_case_pptx(data: BusinessCaseData) -> str:
                         "• Personnel needs\n• Technology infrastructure\n• Capital requirements\n• Training needs")
     
     # Slide 11: Financial Summary
-    if data.financial_data:
-        total_revenue = sum(fd.revenue for fd in data.financial_data)
-        total_net_income = sum(fd.net_income for fd in data.financial_data)
+    if financial_data:
+        total_revenue = sum(fd.get('revenue', 0) for fd in financial_data)
+        total_net_income = sum(fd.get('net_income', 0) for fd in financial_data)
         summary = f"• Total Revenue (5-year): ${total_revenue:,.0f}\n• Total Net Income: ${total_net_income:,.0f}\n• ROI Analysis"
         create_content_slide(prs, "Financial Summary", summary)
     else:
@@ -165,24 +166,28 @@ def generate_business_case_pptx(data: BusinessCaseData) -> str:
     return temp_file.name
 
 
-@router.post("/pptx")
-async def export_pptx(data: BusinessCaseData):
+@bp.route('/pptx', methods=['POST'])
+def export_pptx():
     """Export business case to PowerPoint"""
     try:
+        data = request.get_json()
         file_path = generate_business_case_pptx(data)
-        return FileResponse(
-            path=file_path,
-            filename=f"{data.project_name.replace(' ', '_')}_business_case.pptx",
-            media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        project_name = data.get('project_name', 'business_case')
+        filename = f"{project_name.replace(' ', '_')}_business_case.pptx"
+        return send_file(
+            file_path,
+            as_attachment=True,
+            download_name=filename,
+            mimetype="application/vnd.openxmlformats-officedocument.presentationml.presentation"
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        abort(500, description=str(e))
 
 
-@router.get("/template")
-async def get_template_info():
+@bp.route('/template', methods=['GET'])
+def get_template_info():
     """Get information about the PPTX template structure"""
-    return {
+    return jsonify({
         "slides": [
             {"id": 1, "title": "Title Slide", "type": "title"},
             {"id": 2, "title": "Executive Summary", "type": "content"},
@@ -197,4 +202,4 @@ async def get_template_info():
             {"id": 11, "title": "Financial Summary", "type": "content"},
             {"id": 12, "title": "Conclusion & Recommendations", "type": "content"}
         ]
-    }
+    })
