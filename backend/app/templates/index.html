@@ -58,45 +58,100 @@
 
             <!-- Main Body -->
             <div class="mission-control-body">
-                <!-- Center Panel - Slide Grid -->
+                <!-- Center Panel - Canvas Grid -->
                 <div class="center-panel">
-                    <div class="slide-grid-container">
-                        <div class="slide-grid-header">
-                            <h2>Live Slides Preview</h2>
-                            <span class="slide-count" id="slide-count">12 slides</span>
+                    <div class="canvas-grid-container">
+                        <div class="canvas-grid-header">
+                            <h2>Business Case Canvas</h2>
+                            <div class="canvas-actions">
+                                <button class="btn btn-ai" id="generate-canvas-btn" onclick="generateCanvasContent()">
+                                    ✨ AI Generate
+                                </button>
+                                <span class="canvas-count" id="canvas-count">12 building blocks</span>
+                            </div>
                         </div>
-                        <div class="slide-grid" id="slide-grid">
-                            <!-- Slides will be rendered here dynamically -->
+                        <div class="canvas-grid" id="canvas-grid">
+                            <!-- Canvas building blocks will be rendered here dynamically -->
                         </div>
                     </div>
                 </div>
 
-                <!-- Right Panel - AI Auditor -->
+                <!-- Right Panel - AI Assistant -->
                 <div class="right-panel">
-                    <div class="ai-auditor-container">
-                        <div class="ai-auditor-header">
+                    <div class="ai-assistant-container">
+                        <div class="ai-assistant-header">
                             <div class="header-title">
                                 <span class="ai-icon">🤖</span>
-                                <h2>AI Auditor</h2>
+                                <h2>AI Assistant</h2>
                             </div>
-                            <button class="audit-button" id="audit-btn" onclick="runAudit()">
-                                Run Audit
-                            </button>
+                            <div class="ai-tabs">
+                                <button class="ai-tab active" data-tab="audit" onclick="switchAITab('audit')">Audit</button>
+                                <button class="ai-tab" data-tab="suggest" onclick="switchAITab('suggest')">Suggest</button>
+                                <button class="ai-tab" data-tab="enhance" onclick="switchAITab('enhance')">Enhance</button>
+                            </div>
                         </div>
 
-                        <div class="ai-auditor-content" id="auditor-content">
-                            <div class="empty-state" id="empty-state">
-                                <div class="empty-icon">📊</div>
-                                <p>Click "Run Audit" to analyze your business case for logical errors and inconsistencies.</p>
-                                <ul class="audit-features">
-                                    <li>✓ Formula validation</li>
-                                    <li>✓ Growth rate analysis</li>
-                                    <li>✓ Margin consistency checks</li>
-                                    <li>✓ Trend anomaly detection</li>
-                                </ul>
+                        <div class="ai-assistant-content" id="ai-assistant-content">
+                            <!-- Audit Tab -->
+                            <div class="ai-tab-content active" id="audit-tab">
+                                <div class="tab-actions">
+                                    <button class="audit-button" id="audit-btn" onclick="runAudit()">
+                                        Run Audit
+                                    </button>
+                                </div>
+                                <div class="empty-state" id="empty-state">
+                                    <div class="empty-icon">📊</div>
+                                    <p>Click "Run Audit" to analyze your business case for logical errors and inconsistencies.</p>
+                                    <ul class="audit-features">
+                                        <li>✓ Formula validation</li>
+                                        <li>✓ Growth rate analysis</li>
+                                        <li>✓ Margin consistency checks</li>
+                                        <li>✓ Trend anomaly detection</li>
+                                    </ul>
+                                </div>
+                                <div id="audit-results" style="display: none;">
+                                    <!-- Audit results will be rendered here -->
+                                </div>
                             </div>
-                            <div id="audit-results" style="display: none;">
-                                <!-- Audit results will be rendered here -->
+
+                            <!-- Suggest Tab -->
+                            <div class="ai-tab-content" id="suggest-tab">
+                                <div class="suggest-form">
+                                    <label>Select Canvas Block:</label>
+                                    <select id="suggest-block-select" class="block-select">
+                                        <option value="">-- Select a block --</option>
+                                    </select>
+                                    <button class="btn btn-ai" onclick="getSuggestions()">Get Suggestions</button>
+                                </div>
+                                <div id="suggestions-results">
+                                    <div class="empty-state">
+                                        <div class="empty-icon">💡</div>
+                                        <p>Select a canvas block to get AI-powered suggestions, statistics, and critical questions.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Enhance Tab -->
+                            <div class="ai-tab-content" id="enhance-tab">
+                                <div class="enhance-form">
+                                    <label>Content to Enhance:</label>
+                                    <textarea id="enhance-content-input" class="content-input" placeholder="Paste content here to enhance..."></textarea>
+                                    <label>Enhancement Type:</label>
+                                    <select id="enhance-type-select" class="block-select">
+                                        <option value="clarity">Clarity</option>
+                                        <option value="impact">Impact & Persuasiveness</option>
+                                        <option value="concise">Concise</option>
+                                        <option value="data_driven">Data-Driven</option>
+                                        <option value="action_oriented">Action-Oriented</option>
+                                    </select>
+                                    <button class="btn btn-ai" onclick="enhanceContent()">Enhance Content</button>
+                                </div>
+                                <div id="enhance-results">
+                                    <div class="empty-state">
+                                        <div class="empty-icon">✨</div>
+                                        <p>Paste content and select an enhancement type to improve your business case text.</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -144,6 +199,32 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Canvas Block Edit Modal -->
+    <div id="canvas-edit-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-block-title">Edit Canvas Block</h3>
+                <button class="modal-close" onclick="closeEditModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <textarea id="modal-content-editor" class="content-editor"></textarea>
+                <div class="modal-ai-actions">
+                    <button class="btn btn-ai" onclick="regenerateBlockContent()">
+                        ✨ Regenerate with AI
+                    </button>
+                    <div class="feedback-section">
+                        <input type="text" id="modal-feedback-input" placeholder="Provide feedback for AI improvement..." class="feedback-input">
+                        <button class="btn btn-secondary" onclick="applyFeedback()">Apply Feedback</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveBlockContent()">Save Changes</button>
             </div>
         </div>
     </div>

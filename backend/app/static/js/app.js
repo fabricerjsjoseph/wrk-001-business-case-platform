@@ -1,9 +1,9 @@
 /**
  * Business Case Command Center - JavaScript Application
- * Replaces React functionality with vanilla JS
+ * Canvas-based business case creation with AI-powered content generation
  */
 
-// Global state management (similar to Zustand store)
+// Global state management
 const state = {
     businessCase: {
         project_name: 'New Business Initiative',
@@ -20,21 +20,129 @@ const state = {
             'Cost Escalation': '15%',
             'Tax Rate': '25%',
             'Discount Rate': '10%',
-        }
+        },
+        canvas_content: {} // Store AI-generated canvas content
     },
+    buildingBlocks: null, // Will be fetched from API
     auditResults: null,
-    selectedSlide: null,
+    selectedBlock: null,
+    currentEditBlock: null,
     isExporting: false,
     isAuditing: false,
-    charts: {} // Store chart instances for cleanup
+    isGenerating: false,
+    charts: {}
 };
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
-    renderSlides();
+    fetchBuildingBlocks();
     renderFinancialData();
     updateProjectDisplay();
+    populateBlockSelect();
 });
+
+// ========== CANVAS BUILDING BLOCKS ==========
+
+async function fetchBuildingBlocks() {
+    try {
+        const response = await fetch('/api/canvas/building-blocks');
+        if (response.ok) {
+            const data = await response.json();
+            state.buildingBlocks = data.building_blocks;
+            renderCanvas();
+            populateBlockSelect();
+        } else {
+            // Use default building blocks if API fails
+            state.buildingBlocks = getDefaultBuildingBlocks();
+            renderCanvas();
+            populateBlockSelect();
+        }
+    } catch (err) {
+        console.warn('Could not fetch building blocks, using defaults:', err);
+        state.buildingBlocks = getDefaultBuildingBlocks();
+        renderCanvas();
+        populateBlockSelect();
+    }
+}
+
+function getDefaultBuildingBlocks() {
+    return {
+        "executive_summary": {
+            "name": "Executive Summary",
+            "pitch_step": 1,
+            "description": "High-level overview of the business case"
+        },
+        "problem_statement": {
+            "name": "Problem Statement",
+            "pitch_step": 1,
+            "description": "Define the problem or opportunity being addressed"
+        },
+        "solution_overview": {
+            "name": "Solution Overview",
+            "pitch_step": 2,
+            "description": "Describe your proposed solution"
+        },
+        "value_proposition": {
+            "name": "Value Proposition",
+            "pitch_step": 3,
+            "description": "Articulate the unique value and benefits"
+        },
+        "market_opportunity": {
+            "name": "Market Opportunity",
+            "pitch_step": 4,
+            "description": "Define the market size and potential"
+        },
+        "financial_projections": {
+            "name": "Financial Projections",
+            "pitch_step": 5,
+            "description": "Present financial forecasts and metrics"
+        },
+        "risk_analysis": {
+            "name": "Risk Analysis",
+            "pitch_step": 5,
+            "description": "Identify and assess key risks"
+        },
+        "implementation_plan": {
+            "name": "Implementation Plan",
+            "pitch_step": 6,
+            "description": "Outline the execution roadmap"
+        },
+        "traction_validation": {
+            "name": "Traction & Validation",
+            "pitch_step": 6,
+            "description": "Show evidence and proof points"
+        },
+        "team_resources": {
+            "name": "Team & Resources",
+            "pitch_step": 7,
+            "description": "Describe the team and resource requirements"
+        },
+        "call_to_action": {
+            "name": "Ask & Next Steps",
+            "pitch_step": 7,
+            "description": "Define the specific request and next steps"
+        },
+        "conclusion": {
+            "name": "Conclusion",
+            "pitch_step": 7,
+            "description": "Summary and recommendations"
+        }
+    };
+}
+
+function populateBlockSelect() {
+    const select = document.getElementById('suggest-block-select');
+    if (!select || !state.buildingBlocks) return;
+    
+    select.innerHTML = '<option value="">-- Select a block --</option>';
+    
+    Object.entries(state.buildingBlocks).forEach(([id, block]) => {
+        const option = document.createElement('option');
+        option.value = id;
+        option.textContent = `${block.name} (Step ${block.pitch_step})`;
+        select.appendChild(option);
+    });
+}
 
 // ========== PROJECT MANAGEMENT ==========
 
@@ -62,7 +170,7 @@ function submitProjectEdit() {
     
     toggleEditMode(false);
     updateProjectDisplay();
-    renderSlides(); // Update slides to reflect new title
+    renderCanvas();
 }
 
 function updateProjectDisplay() {
@@ -108,7 +216,6 @@ function renderFinancialData() {
     state.businessCase.financial_data.forEach((row, rowIndex) => {
         const tr = document.createElement('tr');
         
-        // Year (readonly)
         tr.innerHTML = `
             <td class="year-cell">${row.year}</td>
             <td><input type="number" value="${row.revenue}" data-row="${rowIndex}" data-field="revenue" onchange="handleDataChange(this)"></td>
@@ -136,154 +243,17 @@ function handleDataChange(input) {
     state.businessCase.financial_data = calculateDerivedFields(state.businessCase.financial_data);
     
     renderFinancialData();
-    renderSlides();
+    renderCanvas();
 }
 
-// ========== SLIDES ==========
+// ========== CANVAS RENDERING ==========
 
-function generateSlides() {
-    const bc = state.businessCase;
-    const years = bc.financial_data.map(fd => fd.year.toString());
+function renderCanvas() {
+    if (!state.buildingBlocks) return;
     
-    return [
-        {
-            id: 1,
-            title: bc.project_name,
-            type: 'title',
-            content: bc.description,
-        },
-        {
-            id: 2,
-            title: 'Executive Summary',
-            type: 'content',
-            content: '• Project overview and objectives\n• Key financial highlights\n• Strategic alignment',
-        },
-        {
-            id: 3,
-            title: 'Revenue Projection',
-            type: 'chart',
-            chartType: 'bar',
-            chartData: {
-                labels: years,
-                datasets: [{
-                    label: 'Revenue',
-                    data: bc.financial_data.map(fd => fd.revenue),
-                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1,
-                }],
-            },
-        },
-        {
-            id: 4,
-            title: 'Cost Analysis',
-            type: 'chart',
-            chartType: 'bar',
-            chartData: {
-                labels: years,
-                datasets: [
-                    {
-                        label: 'Direct Costs',
-                        data: bc.financial_data.map(fd => fd.costs),
-                        backgroundColor: 'rgba(255, 99, 132, 0.6)',
-                        borderColor: 'rgba(255, 99, 132, 1)',
-                        borderWidth: 1,
-                    },
-                    {
-                        label: 'Operating Expenses',
-                        data: bc.financial_data.map(fd => fd.operating_expenses),
-                        backgroundColor: 'rgba(255, 159, 64, 0.6)',
-                        borderColor: 'rgba(255, 159, 64, 1)',
-                        borderWidth: 1,
-                    },
-                ],
-            },
-        },
-        {
-            id: 5,
-            title: 'Profitability Analysis',
-            type: 'chart',
-            chartType: 'line',
-            chartData: {
-                labels: years,
-                datasets: [
-                    {
-                        label: 'Gross Profit',
-                        data: bc.financial_data.map(fd => fd.gross_profit),
-                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                        borderColor: 'rgba(75, 192, 192, 1)',
-                        borderWidth: 2,
-                    },
-                    {
-                        label: 'EBITDA',
-                        data: bc.financial_data.map(fd => fd.ebitda),
-                        backgroundColor: 'rgba(153, 102, 255, 0.6)',
-                        borderColor: 'rgba(153, 102, 255, 1)',
-                        borderWidth: 2,
-                    },
-                ],
-            },
-        },
-        {
-            id: 6,
-            title: 'Net Income Projection',
-            type: 'chart',
-            chartType: 'bar',
-            chartData: {
-                labels: years,
-                datasets: [{
-                    label: 'Net Income',
-                    data: bc.financial_data.map(fd => fd.net_income),
-                    backgroundColor: 'rgba(46, 204, 113, 0.6)',
-                    borderColor: 'rgba(46, 204, 113, 1)',
-                    borderWidth: 1,
-                }],
-            },
-        },
-        {
-            id: 7,
-            title: 'Key Assumptions',
-            type: 'content',
-            content: Object.entries(bc.assumptions).map(([k, v]) => `• ${k}: ${v}`).join('\n'),
-        },
-        {
-            id: 8,
-            title: 'Risk Analysis',
-            type: 'content',
-            content: '• Market risks\n• Operational risks\n• Financial risks\n• Mitigation strategies',
-        },
-        {
-            id: 9,
-            title: 'Implementation Timeline',
-            type: 'content',
-            content: '• Phase 1: Planning and Setup\n• Phase 2: Implementation\n• Phase 3: Optimization\n• Phase 4: Scale',
-        },
-        {
-            id: 10,
-            title: 'Resource Requirements',
-            type: 'content',
-            content: '• Personnel needs\n• Technology infrastructure\n• Capital requirements\n• Training needs',
-        },
-        {
-            id: 11,
-            title: 'Financial Summary',
-            type: 'content',
-            content: `• Total Revenue (5-year): $${bc.financial_data.reduce((sum, fd) => sum + fd.revenue, 0).toLocaleString()}\n• Total Net Income: $${bc.financial_data.reduce((sum, fd) => sum + fd.net_income, 0).toLocaleString()}\n• ROI Analysis`,
-        },
-        {
-            id: 12,
-            title: 'Conclusion & Recommendations',
-            type: 'content',
-            content: '• Strategic alignment confirmed\n• Financial viability established\n• Recommended next steps',
-        },
-    ];
-}
-
-function renderSlides() {
-    const slides = generateSlides();
-    const slideGrid = document.getElementById('slide-grid');
+    const canvasGrid = document.getElementById('canvas-grid');
     
-    // Destroy existing charts (only if Chart.js is available)
+    // Destroy existing charts
     if (window.Chart) {
         Object.values(state.charts).forEach(chart => {
             if (chart && typeof chart.destroy === 'function') {
@@ -293,137 +263,323 @@ function renderSlides() {
     }
     state.charts = {};
     
-    slideGrid.innerHTML = '';
+    canvasGrid.innerHTML = '';
     
-    slides.forEach(slide => {
-        const slideDiv = document.createElement('div');
-        slideDiv.className = `live-slide ${state.selectedSlide === slide.id ? 'selected' : ''}`;
-        slideDiv.onclick = () => selectSlide(slide.id);
+    const blockIds = Object.keys(state.buildingBlocks);
+    
+    blockIds.forEach((blockId, index) => {
+        const block = state.buildingBlocks[blockId];
+        const content = state.businessCase.canvas_content[blockId] || '';
+        const isAIGenerated = content && content.length > 0;
         
-        let contentHtml = '';
+        const blockDiv = document.createElement('div');
+        blockDiv.className = `canvas-block ${state.selectedBlock === blockId ? 'selected' : ''} ${isAIGenerated ? 'ai-generated' : ''}`;
+        blockDiv.onclick = () => openEditModal(blockId);
         
-        if (slide.type === 'title') {
-            contentHtml = `
-                <div class="slide-title-content">
-                    <h3 class="slide-main-title">${slide.title}</h3>
-                    ${slide.content ? `<p class="slide-subtitle">${slide.content}</p>` : ''}
-                </div>
-            `;
-        } else if (slide.type === 'content') {
-            const bullets = slide.content.split('\n').map(line => 
-                `<p class="slide-bullet">${line}</p>`
-            ).join('');
-            contentHtml = `
-                <div class="slide-text-content">
-                    <h4 class="slide-header">${slide.title}</h4>
-                    <div class="slide-bullets">${bullets}</div>
-                </div>
-            `;
-        } else if (slide.type === 'chart' && slide.chartData) {
-            contentHtml = `
-                <div class="slide-chart-content">
-                    <h4 class="slide-header">${slide.title}</h4>
-                    <div class="chart-container">
-                        <canvas id="chart-${slide.id}"></canvas>
-                    </div>
-                </div>
-            `;
+        // Generate preview content based on block type
+        let previewContent = content || getDefaultContent(blockId, block);
+        
+        // Truncate for preview
+        const maxLength = 150;
+        if (previewContent.length > maxLength) {
+            previewContent = previewContent.substring(0, maxLength) + '...';
         }
         
-        slideDiv.innerHTML = `
-            <div class="slide-number">${slide.id}</div>
-            <div class="slide-content">
-                ${contentHtml}
+        blockDiv.innerHTML = `
+            <div class="block-number">${index + 1}</div>
+            ${isAIGenerated ? '<div class="block-ai-badge">AI</div>' : ''}
+            <div class="block-content">
+                <h4 class="block-title">${block.name}</h4>
+                <div class="block-text">${previewContent.replace(/\n/g, '<br>')}</div>
             </div>
+            <div class="block-pitch-step">Step ${block.pitch_step}</div>
         `;
         
-        slideGrid.appendChild(slideDiv);
-        
-        // Render chart after adding to DOM
-        if (slide.type === 'chart' && slide.chartData) {
-            setTimeout(() => renderChart(slide), 0);
-        }
+        canvasGrid.appendChild(blockDiv);
     });
     
-    document.getElementById('slide-count').textContent = `${slides.length} slides`;
+    document.getElementById('canvas-count').textContent = `${blockIds.length} building blocks`;
 }
 
-function renderChart(slide) {
-    const canvas = document.getElementById(`chart-${slide.id}`);
-    if (!canvas) return;
+function getDefaultContent(blockId, block) {
+    const bc = state.businessCase;
     
-    // Check if Chart.js is properly loaded (consistent with fallback in HTML)
-    if (!window.Chart) {
-        console.warn('Chart.js not available, skipping chart render');
+    // Generate default content based on block type and business case data
+    const defaults = {
+        'executive_summary': `${bc.project_name}\n${bc.description}\n\n• Overview and objectives\n• Key financial highlights\n• Strategic alignment`,
+        'problem_statement': '• Define the problem or opportunity\n• Who is affected?\n• What is the cost of inaction?',
+        'solution_overview': '• Your proposed solution\n• How it works\n• Key differentiators',
+        'value_proposition': '• Key benefits\n• ROI potential\n• Competitive advantages',
+        'market_opportunity': '• Market size and growth\n• Target customers\n• Industry trends',
+        'financial_projections': `• Revenue: ${formatCurrency(bc.financial_data.reduce((sum, fd) => sum + fd.revenue, 0))} (5-year)\n• Net Income: ${formatCurrency(bc.financial_data.reduce((sum, fd) => sum + fd.net_income, 0))}\n• Key metrics and assumptions`,
+        'risk_analysis': '• Market risks\n• Operational risks\n• Mitigation strategies',
+        'implementation_plan': '• Phase 1: Planning\n• Phase 2: Implementation\n• Phase 3: Optimization',
+        'traction_validation': '• Progress to date\n• Proof points\n• Key metrics',
+        'team_resources': '• Team capabilities\n• Resource requirements\n• Expertise needed',
+        'call_to_action': '• Specific ask\n• Next steps\n• Decision timeline',
+        'conclusion': '• Key takeaways\n• Recommendation\n• Expected outcomes'
+    };
+    
+    return defaults[blockId] || block.description;
+}
+
+// ========== CANVAS MODAL ==========
+
+function openEditModal(blockId) {
+    state.currentEditBlock = blockId;
+    const block = state.buildingBlocks[blockId];
+    const content = state.businessCase.canvas_content[blockId] || getDefaultContent(blockId, block);
+    
+    document.getElementById('modal-block-title').textContent = `Edit: ${block.name}`;
+    document.getElementById('modal-content-editor').value = content;
+    document.getElementById('modal-feedback-input').value = '';
+    document.getElementById('canvas-edit-modal').style.display = 'flex';
+}
+
+function closeEditModal() {
+    state.currentEditBlock = null;
+    document.getElementById('canvas-edit-modal').style.display = 'none';
+}
+
+function saveBlockContent() {
+    if (!state.currentEditBlock) return;
+    
+    const content = document.getElementById('modal-content-editor').value;
+    state.businessCase.canvas_content[state.currentEditBlock] = content;
+    
+    closeEditModal();
+    renderCanvas();
+}
+
+async function regenerateBlockContent() {
+    if (!state.currentEditBlock) return;
+    
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = '⏳ Generating...';
+    
+    try {
+        const response = await fetch('/api/canvas/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                block_id: state.currentEditBlock,
+                context: state.businessCase,
+                use_knowledge_base: true
+            })
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            if (result.success && result.content) {
+                document.getElementById('modal-content-editor').value = result.content;
+            } else {
+                alert(result.error || 'Failed to generate content');
+            }
+        } else {
+            alert('Failed to generate content. Please try again.');
+        }
+    } catch (err) {
+        console.error('Generation error:', err);
+        alert('Failed to generate content. Make sure the AI service is running.');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '✨ Regenerate with AI';
+    }
+}
+
+async function applyFeedback() {
+    if (!state.currentEditBlock) return;
+    
+    const feedback = document.getElementById('modal-feedback-input').value;
+    if (!feedback.trim()) {
+        alert('Please enter feedback for the AI to improve the content.');
         return;
     }
     
-    const ctx = canvas.getContext('2d');
+    const currentContent = document.getElementById('modal-content-editor').value;
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = 'Applying...';
     
-    const chartOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: 'bottom',
-                labels: {
-                    font: { size: 8 },
-                    boxWidth: 10,
-                },
-            },
-            title: {
-                display: false,
-            },
-        },
-        scales: {
-            x: {
-                ticks: { font: { size: 8 } },
-            },
-            y: {
-                ticks: { 
-                    font: { size: 8 },
-                    callback: function(value) {
-                        if (typeof value === 'number') {
-                            return value >= 1000 ? `${(value / 1000).toFixed(0)}K` : value;
-                        }
-                        return value;
-                    }
-                },
-            },
-        },
-    };
+    try {
+        const response = await fetch('/api/canvas/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                block_id: state.currentEditBlock,
+                current_content: currentContent,
+                feedback: feedback,
+                context: state.businessCase
+            })
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            if (result.success && result.revised_content) {
+                document.getElementById('modal-content-editor').value = result.revised_content;
+                document.getElementById('modal-feedback-input').value = '';
+            } else {
+                alert(result.error || 'Failed to apply feedback');
+            }
+        } else {
+            alert('Failed to apply feedback. Please try again.');
+        }
+    } catch (err) {
+        console.error('Feedback error:', err);
+        alert('Failed to apply feedback. Make sure the AI service is running.');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Apply Feedback';
+    }
+}
 
-    const pieOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: 'bottom',
-                labels: {
-                    font: { size: 8 },
-                    boxWidth: 10,
-                },
-            },
-        },
-    };
+// ========== AI CANVAS GENERATION ==========
+
+async function generateCanvasContent() {
+    const btn = document.getElementById('generate-canvas-btn');
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Generating...';
+    state.isGenerating = true;
     
-    let chartType = slide.chartType;
-    if (chartType === 'bar') chartType = 'bar';
-    else if (chartType === 'line') chartType = 'line';
-    else if (chartType === 'pie') chartType = 'pie';
+    try {
+        const response = await fetch('/api/canvas/generate-all', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                context: state.businessCase
+            })
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            if (result.success && result.canvas_blocks) {
+                // Update canvas content from AI generation
+                Object.entries(result.canvas_blocks).forEach(([blockId, blockResult]) => {
+                    if (blockResult.success && blockResult.content) {
+                        state.businessCase.canvas_content[blockId] = blockResult.content;
+                    }
+                });
+                renderCanvas();
+                showSaveStatus('Canvas generated!');
+            } else {
+                alert('Failed to generate canvas content');
+            }
+        } else {
+            alert('Failed to generate canvas. Please try again.');
+        }
+    } catch (err) {
+        console.error('Canvas generation error:', err);
+        alert('Failed to generate canvas. Make sure the AI service is running.');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '✨ AI Generate';
+        state.isGenerating = false;
+    }
+}
+
+// ========== AI ASSISTANT TABS ==========
+
+function switchAITab(tabName) {
+    // Update tab buttons
+    document.querySelectorAll('.ai-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.tab === tabName);
+    });
     
-    const options = chartType === 'pie' ? pieOptions : chartOptions;
-    
-    state.charts[slide.id] = new Chart(ctx, {
-        type: chartType,
-        data: slide.chartData,
-        options: options
+    // Update tab content
+    document.querySelectorAll('.ai-tab-content').forEach(content => {
+        content.classList.toggle('active', content.id === `${tabName}-tab`);
     });
 }
 
-function selectSlide(slideId) {
-    state.selectedSlide = state.selectedSlide === slideId ? null : slideId;
-    renderSlides();
+// ========== SUGGESTIONS ==========
+
+async function getSuggestions() {
+    const blockId = document.getElementById('suggest-block-select').value;
+    if (!blockId) {
+        alert('Please select a canvas block');
+        return;
+    }
+    
+    const resultsDiv = document.getElementById('suggestions-results');
+    resultsDiv.innerHTML = '<div class="loading">Getting suggestions...</div>';
+    
+    const currentContent = state.businessCase.canvas_content[blockId] || getDefaultContent(blockId, state.buildingBlocks[blockId]);
+    
+    try {
+        const response = await fetch('/api/canvas/suggest', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                block_id: blockId,
+                current_content: currentContent,
+                context: state.businessCase
+            })
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            if (result.success) {
+                resultsDiv.innerHTML = `
+                    <div class="ai-result-content">
+                        <h4>Suggestions for ${state.buildingBlocks[blockId].name}</h4>
+                        ${result.suggestions_content ? result.suggestions_content.replace(/\n/g, '<br>') : 'No suggestions available.'}
+                    </div>
+                `;
+            } else {
+                resultsDiv.innerHTML = `<div class="error-message">${result.error || 'Failed to get suggestions'}</div>`;
+            }
+        } else {
+            resultsDiv.innerHTML = '<div class="error-message">Failed to get suggestions. Please try again.</div>';
+        }
+    } catch (err) {
+        console.error('Suggestions error:', err);
+        resultsDiv.innerHTML = '<div class="error-message">Failed to get suggestions. Make sure the AI service is running.</div>';
+    }
+}
+
+// ========== CONTENT ENHANCEMENT ==========
+
+async function enhanceContent() {
+    const content = document.getElementById('enhance-content-input').value;
+    if (!content.trim()) {
+        alert('Please enter content to enhance');
+        return;
+    }
+    
+    const enhanceType = document.getElementById('enhance-type-select').value;
+    const resultsDiv = document.getElementById('enhance-results');
+    resultsDiv.innerHTML = '<div class="loading">Enhancing content...</div>';
+    
+    try {
+        const response = await fetch('/api/canvas/enhance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                content: content,
+                enhancement_type: enhanceType
+            })
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            if (result.success) {
+                resultsDiv.innerHTML = `
+                    <div class="ai-result-content">
+                        <h4>Enhanced Content (${enhanceType})</h4>
+                        ${result.enhanced_content ? result.enhanced_content.replace(/\n/g, '<br>') : 'Enhancement not available.'}
+                    </div>
+                `;
+            } else {
+                resultsDiv.innerHTML = `<div class="error-message">${result.error || 'Failed to enhance content'}</div>`;
+            }
+        } else {
+            resultsDiv.innerHTML = '<div class="error-message">Failed to enhance content. Please try again.</div>';
+        }
+    } catch (err) {
+        console.error('Enhance error:', err);
+        resultsDiv.innerHTML = '<div class="error-message">Failed to enhance content. Make sure the AI service is running.</div>';
+    }
 }
 
 // ========== API FUNCTIONS ==========
@@ -445,7 +601,7 @@ async function saveBusinessCase() {
         
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
-            await response.json(); // Consume the response
+            await response.json();
         }
         showSaveStatus('Saved!');
     } catch (err) {
@@ -513,13 +669,14 @@ function resetBusinessCase() {
             'Cost Escalation': '15%',
             'Tax Rate': '25%',
             'Discount Rate': '10%',
-        }
+        },
+        canvas_content: {}
     };
     state.auditResults = null;
     
     updateProjectDisplay();
     renderFinancialData();
-    renderSlides();
+    renderCanvas();
     renderAuditResults();
 }
 
