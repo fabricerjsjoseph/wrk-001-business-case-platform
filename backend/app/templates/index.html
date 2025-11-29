@@ -20,6 +20,13 @@
 <body>
     <div id="root">
         <div class="mission-control">
+            <!-- Commercial Agent Banner -->
+            <div id="commercial-agent-banner" class="commercial-agent-banner" style="display: none;">
+                <span class="banner-icon"></span>
+                <span class="banner-message"></span>
+                <button class="banner-close" onclick="closeBanner()">×</button>
+            </div>
+
             <!-- Header -->
             <header class="app-header">
                 <div class="header-left">
@@ -58,144 +65,381 @@
 
             <!-- Main Body -->
             <div class="mission-control-body">
-                <!-- Center Panel - Canvas Grid -->
-                <div class="center-panel">
-                    <div class="canvas-grid-container">
-                        <div class="canvas-grid-header">
-                            <h2>Business Case Canvas</h2>
-                            <div class="canvas-actions">
-                                <button class="btn btn-ai" id="generate-canvas-btn" onclick="generateCanvasContent()">
-                                    ✨ AI Generate
+                <!-- Main Tabs Container -->
+                <div class="main-tabs-container">
+                    <div class="main-tabs">
+                        <button class="main-tab active" data-tab="strategy" onclick="switchMainTab('strategy')">🎯 Strategy Validator</button>
+                        <button class="main-tab" data-tab="canvas" onclick="switchMainTab('canvas')">📋 Business Canvas</button>
+                        <button class="main-tab" data-tab="financial" onclick="switchMainTab('financial')">💰 Financial Modeling</button>
+                        <button class="main-tab" data-tab="interrogator" onclick="switchMainTab('interrogator')">🔥 Hot Topic Interrogator</button>
+                    </div>
+                </div>
+
+                <!-- Tab Content Container -->
+                <div class="main-tab-contents">
+                    <!-- Strategy Validator Tab -->
+                    <div class="main-tab-content active" id="strategy-tab-content">
+                        <div class="strategy-validator-container">
+                            <div class="strategy-form-section">
+                                <h2>Strategy Validator</h2>
+                                <p class="section-description">Complete all mandatory fields to unlock strategic sign-off and proceed to financial modeling.</p>
+                                
+                                <div class="strategy-form">
+                                    <div class="form-group">
+                                        <label for="problem-statement-input">Problem Statement <span class="required">*</span></label>
+                                        <textarea id="problem-statement-input" class="form-input" rows="4" placeholder="Describe the problem or opportunity being addressed..." onchange="validateStrategyForm()"></textarea>
+                                        <span class="validation-message" id="problem-statement-validation"></span>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="investment-type-select">Investment Type <span class="required">*</span></label>
+                                            <select id="investment-type-select" class="form-input" onchange="validateStrategyForm()">
+                                                <option value="">-- Select Investment Type --</option>
+                                                <option value="growth">Growth Investment</option>
+                                                <option value="sib">Stay in Business (SIB)</option>
+                                            </select>
+                                            <span class="validation-message" id="investment-type-validation"></span>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="strategic-pillar-select">Strategic Alignment (Pillar) <span class="required">*</span></label>
+                                            <select id="strategic-pillar-select" class="form-input" onchange="validateStrategyForm()">
+                                                <option value="">-- Select Strategic Pillar --</option>
+                                                <option value="revenue-growth">Revenue Growth</option>
+                                                <option value="operational-excellence">Operational Excellence</option>
+                                                <option value="customer-experience">Customer Experience</option>
+                                                <option value="digital-transformation">Digital Transformation</option>
+                                                <option value="sustainability">Sustainability</option>
+                                                <option value="innovation">Innovation</option>
+                                            </select>
+                                            <span class="validation-message" id="strategic-pillar-validation"></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="stakeholders-input">Stakeholder Names <span class="required">*</span></label>
+                                        <input type="text" id="stakeholders-input" class="form-input" placeholder="Enter stakeholder names (comma separated)" onchange="validateStrategyForm()">
+                                        <span class="validation-message" id="stakeholders-validation"></span>
+                                    </div>
+
+                                    <div class="strategy-narrative-section">
+                                        <h3>Strategic Narrative</h3>
+                                        <div id="strategic-narrative" class="strategic-narrative">
+                                            <p class="placeholder-text">Complete all mandatory fields above to generate the strategic narrative.</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="sign-off-section">
+                                        <div class="sign-off-checkbox-container">
+                                            <input type="checkbox" id="strategy-signoff" class="sign-off-checkbox" disabled onchange="handleSignOff()">
+                                            <label for="strategy-signoff" class="sign-off-label">
+                                                I confirm that the strategic information is complete and accurate, and I approve proceeding to financial modeling.
+                                            </label>
+                                        </div>
+                                        <div id="signoff-status" class="signoff-status">
+                                            <span class="status-icon">🔒</span>
+                                            <span class="status-text">Complete all mandatory fields to enable sign-off</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Business Canvas Tab -->
+                    <div class="main-tab-content" id="canvas-tab-content">
+                        <div class="canvas-tab-layout">
+                            <div class="center-panel">
+                                <div class="canvas-grid-container">
+                                    <div class="canvas-grid-header">
+                                        <h2>Business Case Canvas</h2>
+                                        <div class="canvas-actions">
+                                            <button class="btn btn-ai" id="generate-canvas-btn" onclick="generateCanvasContent()">
+                                                ✨ AI Generate
+                                            </button>
+                                            <span class="canvas-count" id="canvas-count">12 building blocks</span>
+                                        </div>
+                                    </div>
+                                    <div class="canvas-grid" id="canvas-grid">
+                                        <!-- Canvas building blocks will be rendered here dynamically -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right Panel - AI Assistant -->
+                            <div class="right-panel">
+                                <div class="ai-assistant-container">
+                                    <div class="ai-assistant-header">
+                                        <div class="header-title">
+                                            <span class="ai-icon">🤖</span>
+                                            <h2>AI Assistant</h2>
+                                        </div>
+                                        <div class="ai-tabs">
+                                            <button class="ai-tab active" data-tab="audit" onclick="switchAITab('audit')">Audit</button>
+                                            <button class="ai-tab" data-tab="suggest" onclick="switchAITab('suggest')">Suggest</button>
+                                            <button class="ai-tab" data-tab="enhance" onclick="switchAITab('enhance')">Enhance</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="ai-assistant-content" id="ai-assistant-content">
+                                        <!-- Audit Tab -->
+                                        <div class="ai-tab-content active" id="audit-tab">
+                                            <div class="tab-actions">
+                                                <button class="audit-button" id="audit-btn" onclick="runAudit()">
+                                                    Run Audit
+                                                </button>
+                                            </div>
+                                            <div class="empty-state" id="empty-state">
+                                                <div class="empty-icon">📊</div>
+                                                <p>Click "Run Audit" to analyze your business case for logical errors and inconsistencies.</p>
+                                                <ul class="audit-features">
+                                                    <li>✓ Formula validation</li>
+                                                    <li>✓ Growth rate analysis</li>
+                                                    <li>✓ Margin consistency checks</li>
+                                                    <li>✓ Trend anomaly detection</li>
+                                                </ul>
+                                            </div>
+                                            <div id="audit-results" style="display: none;">
+                                                <!-- Audit results will be rendered here -->
+                                            </div>
+                                        </div>
+
+                                        <!-- Suggest Tab -->
+                                        <div class="ai-tab-content" id="suggest-tab">
+                                            <div class="suggest-form">
+                                                <label>Select Canvas Block:</label>
+                                                <select id="suggest-block-select" class="block-select">
+                                                    <option value="">-- Select a block --</option>
+                                                </select>
+                                                <button class="btn btn-ai" onclick="getSuggestions()">Get Suggestions</button>
+                                            </div>
+                                            <div id="suggestions-results">
+                                                <div class="empty-state">
+                                                    <div class="empty-icon">💡</div>
+                                                    <p>Select a canvas block to get AI-powered suggestions, statistics, and critical questions.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Enhance Tab -->
+                                        <div class="ai-tab-content" id="enhance-tab">
+                                            <div class="enhance-form">
+                                                <label>Content to Enhance:</label>
+                                                <textarea id="enhance-content-input" class="content-input" placeholder="Paste content here to enhance..."></textarea>
+                                                <label>Enhancement Type:</label>
+                                                <select id="enhance-type-select" class="block-select">
+                                                    <option value="clarity">Clarity</option>
+                                                    <option value="impact">Impact & Persuasiveness</option>
+                                                    <option value="concise">Concise</option>
+                                                    <option value="data_driven">Data-Driven</option>
+                                                    <option value="action_oriented">Action-Oriented</option>
+                                                </select>
+                                                <button class="btn btn-ai" onclick="enhanceContent()">Enhance Content</button>
+                                            </div>
+                                            <div id="enhance-results">
+                                                <div class="empty-state">
+                                                    <div class="empty-icon">✨</div>
+                                                    <p>Paste content and select an enhancement type to improve your business case text.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Financial Modeling Tab -->
+                    <div class="main-tab-content" id="financial-tab-content">
+                        <div class="financial-modeling-container">
+                            <div class="financial-left-panel">
+                                <div class="data-deck-container">
+                                    <div class="data-deck-header">
+                                        <h2>Data Deck</h2>
+                                        <div class="data-deck-info">
+                                            <span class="info-badge calculated">Calculated fields are highlighted</span>
+                                        </div>
+                                    </div>
+                                    <div class="data-deck-table">
+                                        <table id="financial-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Year</th>
+                                                    <th>Revenue</th>
+                                                    <th>Costs</th>
+                                                    <th class="calculated-header">Gross Profit</th>
+                                                    <th>Op. Expenses</th>
+                                                    <th class="calculated-header">EBITDA</th>
+                                                    <th>Depreciation</th>
+                                                    <th class="calculated-header">EBIT</th>
+                                                    <th>Interest</th>
+                                                    <th class="calculated-header">Taxes</th>
+                                                    <th class="calculated-header">Net Income</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="financial-data-body">
+                                                <!-- Financial data rows will be rendered here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="data-deck-footer">
+                                        <div class="formula-legend">
+                                            <span><strong>Formulas:</strong></span>
+                                            <span>Gross Profit = Revenue - Costs</span>
+                                            <span>EBITDA = Gross Profit - Op. Expenses</span>
+                                            <span>EBIT = EBITDA - Depreciation</span>
+                                            <span>Net Income = EBIT - Interest - Taxes (25%)</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Inflation Settings -->
+                                <div class="inflation-settings-container">
+                                    <div class="inflation-header">
+                                        <h3>💹 Inflation & Cost Settings</h3>
+                                    </div>
+                                    <div class="inflation-form">
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="inflation-rate-input">Annual Inflation Rate (%)</label>
+                                                <input type="number" id="inflation-rate-input" class="form-input" value="3" step="0.1" min="0" max="100" onchange="updateFinancialMetrics()">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="hurdle-rate-input">Hurdle Rate (%)</label>
+                                                <input type="number" id="hurdle-rate-input" class="form-input" value="10" step="0.1" min="0" max="100" onchange="updateFinancialMetrics()">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="initial-investment-input">Initial Investment ($)</label>
+                                                <input type="number" id="initial-investment-input" class="form-input" value="500000" step="1000" min="0" onchange="updateFinancialMetrics()">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="financial-right-panel">
+                                <!-- Financial Metrics Dashboard -->
+                                <div class="financial-metrics-container">
+                                    <div class="metrics-header">
+                                        <h3>📊 Financial Metrics</h3>
+                                        <div class="metrics-actions">
+                                            <button class="btn btn-stress-test" onclick="runSensitivityAnalysis()">
+                                                🔬 Stress Test (-10%)
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="metrics-grid" id="metrics-grid">
+                                        <!-- NPV Card -->
+                                        <div class="metric-card" id="npv-card">
+                                            <div class="metric-header">
+                                                <span class="metric-title">Net Present Value (NPV)</span>
+                                                <span class="metric-indicator" id="npv-indicator">⚪</span>
+                                            </div>
+                                            <div class="metric-value" id="npv-value">$0</div>
+                                            <div class="metric-status" id="npv-status">Calculating...</div>
+                                        </div>
+
+                                        <!-- IRR Card -->
+                                        <div class="metric-card" id="irr-card">
+                                            <div class="metric-header">
+                                                <span class="metric-title">Internal Rate of Return (IRR)</span>
+                                                <span class="metric-indicator" id="irr-indicator">⚪</span>
+                                            </div>
+                                            <div class="metric-value" id="irr-value">0%</div>
+                                            <div class="metric-status" id="irr-status">Calculating...</div>
+                                        </div>
+
+                                        <!-- Payback Period Card -->
+                                        <div class="metric-card" id="payback-card">
+                                            <div class="metric-header">
+                                                <span class="metric-title">Payback Period</span>
+                                                <span class="metric-indicator" id="payback-indicator">⚪</span>
+                                            </div>
+                                            <div class="metric-value" id="payback-value">-- years</div>
+                                            <div class="metric-status" id="payback-status">Calculating...</div>
+                                        </div>
+
+                                        <!-- ROFE Card -->
+                                        <div class="metric-card" id="rofe-card">
+                                            <div class="metric-header">
+                                                <span class="metric-title">Return on Funds Employed (ROFE)</span>
+                                                <span class="metric-indicator" id="rofe-indicator">⚪</span>
+                                            </div>
+                                            <div class="metric-value" id="rofe-value">0%</div>
+                                            <div class="metric-status" id="rofe-status">Calculating...</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Sensitivity Analysis Results -->
+                                    <div id="sensitivity-results" class="sensitivity-results" style="display: none;">
+                                        <h4>🔬 Stress Test Results (Benefits -10%)</h4>
+                                        <div class="sensitivity-grid">
+                                            <div class="sensitivity-item">
+                                                <span class="label">Stressed NPV:</span>
+                                                <span class="value" id="stressed-npv">$0</span>
+                                            </div>
+                                            <div class="sensitivity-item">
+                                                <span class="label">Stressed IRR:</span>
+                                                <span class="value" id="stressed-irr">0%</span>
+                                            </div>
+                                            <div class="sensitivity-item verdict" id="stress-verdict">
+                                                <span class="label">Verdict:</span>
+                                                <span class="value verdict-text">--</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hot Topic Interrogator Tab -->
+                    <div class="main-tab-content" id="interrogator-tab-content">
+                        <div class="interrogator-container">
+                            <div class="interrogator-header">
+                                <h2>🔥 Hot Topic Interrogator</h2>
+                                <p class="section-description">Prepare for tough investment committee questions with this gamified card system.</p>
+                            </div>
+                            
+                            <div class="interrogator-controls">
+                                <button class="btn btn-primary btn-large" onclick="drawNewQuestion()">
+                                    🎴 Draw New Question
                                 </button>
-                                <span class="canvas-count" id="canvas-count">12 building blocks</span>
-                            </div>
-                        </div>
-                        <div class="canvas-grid" id="canvas-grid">
-                            <!-- Canvas building blocks will be rendered here dynamically -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Right Panel - AI Assistant -->
-                <div class="right-panel">
-                    <div class="ai-assistant-container">
-                        <div class="ai-assistant-header">
-                            <div class="header-title">
-                                <span class="ai-icon">🤖</span>
-                                <h2>AI Assistant</h2>
-                            </div>
-                            <div class="ai-tabs">
-                                <button class="ai-tab active" data-tab="audit" onclick="switchAITab('audit')">Audit</button>
-                                <button class="ai-tab" data-tab="suggest" onclick="switchAITab('suggest')">Suggest</button>
-                                <button class="ai-tab" data-tab="enhance" onclick="switchAITab('enhance')">Enhance</button>
-                            </div>
-                        </div>
-
-                        <div class="ai-assistant-content" id="ai-assistant-content">
-                            <!-- Audit Tab -->
-                            <div class="ai-tab-content active" id="audit-tab">
-                                <div class="tab-actions">
-                                    <button class="audit-button" id="audit-btn" onclick="runAudit()">
-                                        Run Audit
-                                    </button>
-                                </div>
-                                <div class="empty-state" id="empty-state">
-                                    <div class="empty-icon">📊</div>
-                                    <p>Click "Run Audit" to analyze your business case for logical errors and inconsistencies.</p>
-                                    <ul class="audit-features">
-                                        <li>✓ Formula validation</li>
-                                        <li>✓ Growth rate analysis</li>
-                                        <li>✓ Margin consistency checks</li>
-                                        <li>✓ Trend anomaly detection</li>
-                                    </ul>
-                                </div>
-                                <div id="audit-results" style="display: none;">
-                                    <!-- Audit results will be rendered here -->
+                                <div class="question-counter">
+                                    Questions Answered: <span id="questions-answered">0</span> / <span id="total-questions">15</span>
                                 </div>
                             </div>
 
-                            <!-- Suggest Tab -->
-                            <div class="ai-tab-content" id="suggest-tab">
-                                <div class="suggest-form">
-                                    <label>Select Canvas Block:</label>
-                                    <select id="suggest-block-select" class="block-select">
-                                        <option value="">-- Select a block --</option>
-                                    </select>
-                                    <button class="btn btn-ai" onclick="getSuggestions()">Get Suggestions</button>
-                                </div>
-                                <div id="suggestions-results">
-                                    <div class="empty-state">
-                                        <div class="empty-icon">💡</div>
-                                        <p>Select a canvas block to get AI-powered suggestions, statistics, and critical questions.</p>
+                            <div class="question-card-container">
+                                <div class="question-card" id="question-card">
+                                    <div class="card-category" id="card-category">Click "Draw New Question" to start</div>
+                                    <div class="card-question" id="card-question">
+                                        Prepare yourself for challenging questions from the investment committee.
+                                    </div>
+                                    <div class="card-hint" id="card-hint">
+                                        💡 Hint: Think about how this applies to your specific business case.
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Enhance Tab -->
-                            <div class="ai-tab-content" id="enhance-tab">
-                                <div class="enhance-form">
-                                    <label>Content to Enhance:</label>
-                                    <textarea id="enhance-content-input" class="content-input" placeholder="Paste content here to enhance..."></textarea>
-                                    <label>Enhancement Type:</label>
-                                    <select id="enhance-type-select" class="block-select">
-                                        <option value="clarity">Clarity</option>
-                                        <option value="impact">Impact & Persuasiveness</option>
-                                        <option value="concise">Concise</option>
-                                        <option value="data_driven">Data-Driven</option>
-                                        <option value="action_oriented">Action-Oriented</option>
-                                    </select>
-                                    <button class="btn btn-ai" onclick="enhanceContent()">Enhance Content</button>
+                            <div class="answer-section" id="answer-section" style="display: none;">
+                                <div class="form-group">
+                                    <label for="answer-input">Your Response:</label>
+                                    <textarea id="answer-input" class="form-input" rows="4" placeholder="Write your response to this question..."></textarea>
                                 </div>
-                                <div id="enhance-results">
-                                    <div class="empty-state">
-                                        <div class="empty-icon">✨</div>
-                                        <p>Paste content and select an enhancement type to improve your business case text.</p>
-                                    </div>
+                                <div class="answer-actions">
+                                    <button class="btn btn-secondary" onclick="skipQuestion()">Skip</button>
+                                    <button class="btn btn-primary" onclick="submitAnswer()">Submit Answer</button>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Bottom Panel - Data Deck -->
-            <div class="bottom-panel">
-                <div class="data-deck-container">
-                    <div class="data-deck-header">
-                        <h2>Data Deck</h2>
-                        <div class="data-deck-info">
-                            <span class="info-badge calculated">Calculated fields are highlighted</span>
-                        </div>
-                    </div>
-                    <div class="data-deck-table">
-                        <table id="financial-table">
-                            <thead>
-                                <tr>
-                                    <th>Year</th>
-                                    <th>Revenue</th>
-                                    <th>Costs</th>
-                                    <th class="calculated-header">Gross Profit</th>
-                                    <th>Op. Expenses</th>
-                                    <th class="calculated-header">EBITDA</th>
-                                    <th>Depreciation</th>
-                                    <th class="calculated-header">EBIT</th>
-                                    <th>Interest</th>
-                                    <th class="calculated-header">Taxes</th>
-                                    <th class="calculated-header">Net Income</th>
-                                </tr>
-                            </thead>
-                            <tbody id="financial-data-body">
-                                <!-- Financial data rows will be rendered here -->
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="data-deck-footer">
-                        <div class="formula-legend">
-                            <span><strong>Formulas:</strong></span>
-                            <span>Gross Profit = Revenue - Costs</span>
-                            <span>EBITDA = Gross Profit - Op. Expenses</span>
-                            <span>EBIT = EBITDA - Depreciation</span>
-                            <span>Net Income = EBIT - Interest - Taxes (25%)</span>
+                            <div class="answered-questions" id="answered-questions">
+                                <h3>📝 Your Responses</h3>
+                                <div id="answers-list" class="answers-list">
+                                    <!-- Answered questions will appear here -->
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
